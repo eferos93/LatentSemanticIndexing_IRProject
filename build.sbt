@@ -11,3 +11,5 @@ val sparkDependencies = Seq(
   "org.apache.spark" %% "spark-sql" % sparkVersion,
   "org.apache.spark" %% "spark-mllib" % sparkVersion
 )
+
+libraryDependencies ++= sparkDependencies
