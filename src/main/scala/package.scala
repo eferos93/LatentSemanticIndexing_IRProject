@@ -2,7 +2,8 @@ package org.ir
 
 
 import org.apache.spark.ml.feature.StopWordsRemover
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Row, SparkSession}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ir.project.model.ArxivArticle
 
@@ -54,14 +55,21 @@ package object project {
     sparkSession.read.json(filepath)
 
   def cleanAndSaveData(originalCorpus: DataFrame): Unit = {
-    lazy val partiallyCleanedDataSet =
+    lazy val partiallyCleanedDataFrame: DataFrame =
       originalCorpus
       .select("id", "title", "abstract")
       .sort($"id".asc)
       .map(row => (row.getString(0), row.getString(1).filter(_ >= ' '), clean(row.getString(2))))
       .toDF("id", "title", "abstract")
-    stopWordsRemover(partiallyCleanedDataSet)
-      .repartition(1)
+    stopWordsRemover(partiallyCleanedDataFrame)
+      .repartition(1) // to write it in a single json file
       .write.json("data/cleaned")
   }
+
+  def asArray(dataFrame: DataFrame): Vector[Row] = {
+    dataFrame.collect.toVector
+  }
+
+  def readCleanedDataAndConvertToRDD(filepath: String = "data/cleaned/cleaned.json"): Vector[Row] =
+    (readCorpus _ andThen asArray)(filepath)
 }
