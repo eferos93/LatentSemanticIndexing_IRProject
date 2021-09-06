@@ -2,16 +2,16 @@ package org.ir.project
 package data_structures
 
 import org.apache.spark.sql.{DataFrame, Row}
-import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
-import org.apache.spark.sql.functions.sum
+import org.apache.spark.sql.types.{IntegerType, LongType, StringType, StructField, StructType}
+import org.apache.spark.sql.functions.{sum, length}
 import sparkSession.implicits._
 
 class InvertedIndex {
   val schema: StructType = StructType(
     Array(
       StructField("term", StringType, nullable = false),
-      StructField("documentId", StringType, nullable = false),
-      StructField("count", IntegerType, nullable = false)
+      StructField("documentId", LongType, nullable = false),
+      StructField("termFrequency", IntegerType, nullable = false)
     )
   )
 
@@ -19,18 +19,27 @@ class InvertedIndex {
 }
 
 object InvertedIndex {
-  def apply(corpus: DataFrame) = {
-    import sparkSession.implicits._
+  def apply(tokenizedCorpus: DataFrame): InvertedIndex = {
     val invertedIndex = new InvertedIndex
-    val iIndex =
-      corpus.as[(String, Seq[String])]
+    invertedIndex.dictionary = makeIndex(tokenizedCorpus).cache()
+    invertedIndex
+  }
+
+  def apply(pathToTokenizedCorpus: String = "data/cleaned/cleaned.json"): InvertedIndex = {
+    val invertedIndex = new InvertedIndex
+    invertedIndex.dictionary = makeIndex(readData(pathToTokenizedCorpus).select("title", "tokens", "documentId")).cache()
+    invertedIndex
+  }
+
+  def makeIndex(tokenizedCorpus: DataFrame): DataFrame = {
+      tokenizedCorpus.as[(String, Seq[String], Long)]
         .flatMap {
-          case (docId, tokens) => tokens.map(term => (term, docId, 1))
+          case (_, tokens, documentId) => tokens.map(term => (term, documentId, 1))
         }
-        .toDF("term", "docId", "count")
-        .groupBy("term", "docId")
+        .toDF("term", "documentId", "count")
+        .groupBy("term", "documentId")
         .agg(sum("count"))
-    println(iIndex)
-    iIndex
+        .orderBy($"sum(count)".desc)
+        .withColumnRenamed("sum(count)", "termFrequency")
   }
 }

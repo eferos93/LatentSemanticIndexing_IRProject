@@ -3,6 +3,7 @@ package org.ir
 
 import org.apache.spark.ml.feature.StopWordsRemover
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SaveMode, SparkSession}
+import org.apache.spark.sql.functions.monotonically_increasing_id
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ir.project.data_structures.ArxivArticle
 
@@ -34,14 +35,14 @@ package object project {
     //    - ^\\s : not a  space
     //    - ^- : not a -
     //    filter(_ >= " ") selects every that is not a control character
-    text.filter(_ >= ' ').replaceAll("[^\\w^\\s-]", "").toLowerCase()
+    text.filter(_ >= ' ').replaceAll("[^\\w^\\s^-]", "").toLowerCase()
 
   val removeStopWords: DataFrame => DataFrame = dataFrame =>
     new StopWordsRemover()
       .setInputCol("tokens")
       .setOutputCol("tokensCleaned")
       .transform(dataFrame)
-      .select("title", "tokensCleaned")
+      .select("title", "tokensCleaned", "documentId")
       .withColumnRenamed("tokensCleaned", "tokens")
 
   val tokenize: String => Seq[String] = _.split(" ").toSeq
@@ -53,19 +54,24 @@ package object project {
    */
   val readData: String => DataFrame = sparkSession.read.json(_)
 
-  val saveCorpus: DataFrame => Unit =
-    _.withColumnRenamed("abstract", "articleAbstract")
-      .select("title", "articleAbstract")
-      .as[ArxivArticle].orderBy('title.asc)
-      .repartition(1)
+  val saveCorpus: DataFrame => Dataset[ArxivArticle] = { data =>
+    val corpus =
+      data.withColumnRenamed("abstract", "articleAbstract")
+        .select("title", "articleAbstract")
+        .withColumn("documentId", monotonically_increasing_id)
+        .as[ArxivArticle].orderBy('documentId.asc)
+
+    corpus.repartition(1)
       .write.mode(SaveMode.Overwrite).json("data/corpus")
+    corpus
+  }
 
   /**
    * Read raw data downloaded from https://www.kaggle.com/Cornell-University/arxiv
    * turn it into a corpus and save it
    * @param filepath Path to the raw data
    */
-  def readDataAndSaveAsCorpus(filepath: String = "data/arxiv-metadata-oai-snapshot.json"): Unit =
+  def readDataAndSaveAsCorpus(filepath: String = "data/arxiv-metadata-oai-snapshot.json"): Dataset[ArxivArticle] =
     (readData andThen saveCorpus)(filepath)
 
   /**
@@ -76,15 +82,26 @@ package object project {
   def readCorpus(filepath: String = "data/corpus/corpus.json"): Dataset[ArxivArticle] =
     readData(filepath).as[ArxivArticle]
 
-  def cleanAndSaveData(corpus: Dataset[ArxivArticle]): DataFrame = {
-    lazy val partiallyCleanedDataFrame: DataFrame =
+  def cleanAndSaveTokenizedCorpus(corpus: Dataset[ArxivArticle]): DataFrame =
+    (cleanCorpus andThen saveTokenizedCorpus)(corpus)
+
+  val cleanCorpus: Dataset[ArxivArticle] => DataFrame = { corpus =>
+    lazy val partiallyCleanedCorpus: DataFrame =
       corpus
-        .map(article => (article.title.filter(_ >= ' '), clean(article.articleAbstract).filterNot(_.isEmpty)))
-        .toDF("title", "tokens")
-    lazy val tokenizedCorpus: DataFrame = removeStopWords(partiallyCleanedDataFrame)
-    tokenizedCorpus
-      .repartition(1) // to write it in a single json file
-      .write.mode(SaveMode.Overwrite).json("data/cleaned")
+        .map(article =>
+          (
+            article.title.filter(_ >= ' '), //remove control characters from title
+            clean(article.articleAbstract).filterNot(term => term.isEmpty || term.contains("-")),
+            article.documentId
+          )
+        )
+        .toDF("title", "tokens", "documentId")
+    removeStopWords(partiallyCleanedCorpus)
+  }
+
+  val saveTokenizedCorpus: DataFrame => DataFrame = { tokenizedCorpus =>
+    tokenizedCorpus.repartition(1).write.mode(SaveMode.Overwrite).json("data/cleaned")
     tokenizedCorpus
   }
+
 }
