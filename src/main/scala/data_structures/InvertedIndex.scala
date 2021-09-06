@@ -1,14 +1,34 @@
 package org.ir.project
 package data_structures
 
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
+import org.apache.spark.sql.functions.sum
+import sparkSession.implicits._
 
 class InvertedIndex {
-  type Term = String
-  type DocumentId = String
-  var dictionary: Map[Term, Map[DocumentId, Int]] = Map.empty
+  val schema: StructType = StructType(
+    Array(
+      StructField("term", StringType, nullable = false),
+      StructField("documentId", StringType, nullable = false),
+      StructField("count", IntegerType, nullable = false)
+    )
+  )
+
+  var dictionary: DataFrame = sparkSession.createDataFrame(sparkContext.emptyRDD[Row], schema)
 }
 
 object InvertedIndex {
-  def apply(corpus: DataFrame) = ???
+  def apply(corpus: DataFrame) = {
+    import sparkSession.implicits._
+    val invertedIndex = new InvertedIndex
+    val iIndex =
+      corpus.rdd.flatMap { row =>
+        row.getAs[Array[String]](1).map { term =>
+          Row(term, row.getString(0), 1)
+        }
+      }
+    println(iIndex)
+    iIndex
+  }
 }
