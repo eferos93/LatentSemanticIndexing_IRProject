@@ -27,11 +27,9 @@ object InvertedIndex {
         .flatMap {
           case (docId, tokens) => tokens.map(term => (term, docId, 1))
         }
-//      corpus.as.flatMap { row =>
-//        row.getAs[Array[String]](1).map { term =>
-//          (term, row.getString(0), 1)
-//        }
-//      }
+        .toDF("term", "docId", "count")
+        .groupBy("term", "docId")
+        .agg(sum("count"))
     println(iIndex)
     iIndex
   }
