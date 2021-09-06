@@ -23,11 +23,15 @@ object InvertedIndex {
     import sparkSession.implicits._
     val invertedIndex = new InvertedIndex
     val iIndex =
-      corpus.rdd.flatMap { row =>
-        row.getAs[Array[String]](1).map { term =>
-          Row(term, row.getString(0), 1)
+      corpus.as[(String, Seq[String])]
+        .flatMap {
+          case (docId, tokens) => tokens.map(term => (term, docId, 1))
         }
-      }
+//      corpus.as.flatMap { row =>
+//        row.getAs[Array[String]](1).map { term =>
+//          (term, row.getString(0), 1)
+//        }
+//      }
     println(iIndex)
     iIndex
   }

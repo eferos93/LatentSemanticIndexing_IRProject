@@ -2,8 +2,9 @@ package org.ir
 
 
 import org.apache.spark.ml.feature.StopWordsRemover
-import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SaveMode, SparkSession}
 import org.apache.spark.{SparkConf, SparkContext}
+import org.ir.project.data_structures.ArxivArticle
 
 
 package object project {
@@ -37,29 +38,53 @@ package object project {
 
   val removeStopWords: DataFrame => DataFrame = dataFrame =>
     new StopWordsRemover()
-      .setInputCol("abstract")
-      .setOutputCol("abstractCleaned")
+      .setInputCol("tokens")
+      .setOutputCol("tokensCleaned")
       .transform(dataFrame)
-      .select("title", "abstractCleaned")
-      .withColumnRenamed("abstractCleaned", "abstract")
+      .select("title", "tokensCleaned")
+      .withColumnRenamed("tokensCleaned", "tokens")
 
   val tokenize: String => Seq[String] = _.split(" ").toSeq
 
-  def clean(text: String): Seq[String] =
-    (normaliseText andThen tokenize)(text)
+  val clean: String => Seq[String] = (normaliseText andThen tokenize)(_)
 
-  def readCorpus(filepath: String = "data/arxiv-metadata-oai-snapshot.json"): DataFrame =
-//    download and extract data from https://www.kaggle.com/Cornell-University/arxiv
-    sparkSession.read.json(filepath).select( "title", "abstract")
+  /**
+   * read the raw data, downloadable from https://www.kaggle.com/Cornell-University/arxiv
+   */
+  val readData: String => DataFrame = sparkSession.read.json(_)
 
-  def cleanAndSaveData(originalCorpus: DataFrame): Unit = {
+  val saveCorpus: DataFrame => Unit =
+    _.withColumnRenamed("abstract", "articleAbstract")
+      .select("title", "articleAbstract")
+      .as[ArxivArticle].orderBy('title.asc)
+      .repartition(1)
+      .write.mode(SaveMode.Overwrite).json("data/corpus")
+
+  /**
+   * Read raw data downloaded from https://www.kaggle.com/Cornell-University/arxiv
+   * turn it into a corpus and save it
+   * @param filepath Path to the raw data
+   */
+  def readDataAndSaveAsCorpus(filepath: String = "data/arxiv-metadata-oai-snapshot.json"): Unit =
+    (readData andThen saveCorpus)(filepath)
+
+  /**
+   * Read the Corpus data
+   * @param filepath path to the corpus
+   * @return The corpus represented as a Dataset[ArxivArticle]
+   */
+  def readCorpus(filepath: String = "data/corpus/corpus.json"): Dataset[ArxivArticle] =
+    readData(filepath).as[ArxivArticle]
+
+  def cleanAndSaveData(corpus: Dataset[ArxivArticle]): DataFrame = {
     lazy val partiallyCleanedDataFrame: DataFrame =
-      originalCorpus
-      .sort($"title".asc)
-      .map(row => (row.getString(0).filter(_ >= ' '), clean(row.getString(1)).filterNot(_.isEmpty)))
-      .toDF("title", "abstract")
-    removeStopWords(partiallyCleanedDataFrame)
+      corpus
+        .map(article => (article.title.filter(_ >= ' '), clean(article.articleAbstract).filterNot(_.isEmpty)))
+        .toDF("title", "tokens")
+    lazy val tokenizedCorpus: DataFrame = removeStopWords(partiallyCleanedDataFrame)
+    tokenizedCorpus
       .repartition(1) // to write it in a single json file
       .write.mode(SaveMode.Overwrite).json("data/cleaned")
+    tokenizedCorpus
   }
 }
