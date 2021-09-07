@@ -26,7 +26,7 @@ object InvertedIndex {
           case (tokens, documentId) => tokens.map(term => (term, documentId, 1))
         }
         .toDF("term", "documentId", "count")
-        .groupBy("term", "documentId")
+        .groupBy("term", "documentId") // groupBy together with agg, is a relational style aggregation
         .agg(sum("count").as("termFrequency"))
         .as[(String, Long, Long)] // convert DataFrame to Dataset[(String, Long, Long)]
         .collect() // collect the dataset and send it to the memory of the driver application

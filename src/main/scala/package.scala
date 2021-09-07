@@ -33,7 +33,6 @@ package object project {
     //    - ^\\w : not a word
     //    - ^\\s : not a  space
     //    - ^- : not a -
-    //    filter(_ >= " ") selects every that is not a control character
     text.filter(_ >= ' ').replaceAll("[^\\w^\\s^-]", "").toLowerCase()
 
   val removeStopWords: DataFrame => DataFrame = dataFrame =>
