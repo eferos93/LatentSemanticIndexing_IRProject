@@ -59,5 +59,5 @@ package object project {
    * @return The corpus represented as a Dataset[ArxivArticle]
    */
   def readCorpus(filepath: String = "data/movies_genres.csv"): Dataset[Movie] =
-    readData(filepath).select("title", "plot").sort($"title".asc).as[Movie]
+    readData(filepath).select("title", "plot").orderBy($"title".asc).as[Movie]
 }
