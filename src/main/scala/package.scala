@@ -2,10 +2,9 @@ package org.ir
 
 
 import org.apache.spark.ml.feature.StopWordsRemover
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SaveMode, SparkSession}
-import org.apache.spark.sql.functions.monotonically_increasing_id
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.{SparkConf, SparkContext}
-import org.ir.project.data_structures.ArxivArticle
+import org.ir.project.data_structures.Movie
 
 
 package object project {
@@ -42,66 +41,24 @@ package object project {
       .setInputCol("tokens")
       .setOutputCol("tokensCleaned")
       .transform(dataFrame)
-      .select("title", "tokensCleaned", "documentId")
+      .select( "tokensCleaned")
       .withColumnRenamed("tokensCleaned", "tokens")
 
-  val tokenize: String => Seq[String] = _.split(" ").toSeq
+  val tokenize: String => Seq[String] = _.split(" ").filterNot(_.isEmpty).toSeq
 
   val clean: String => Seq[String] = (normaliseText andThen tokenize)(_)
 
   /**
    * read the raw data, downloadable from https://www.kaggle.com/Cornell-University/arxiv
    */
-  val readData: String => DataFrame = sparkSession.read.json(_)
-
-  val saveCorpus: DataFrame => Dataset[ArxivArticle] = { data =>
-    val corpus =
-      data.withColumnRenamed("abstract", "articleAbstract")
-        .select("title", "articleAbstract")
-        .withColumn("documentId", monotonically_increasing_id)
-        .as[ArxivArticle].orderBy('documentId.asc)
-
-    corpus.repartition(1)
-      .write.mode(SaveMode.Overwrite).json("data/corpus")
-    corpus
-  }
-
-  /**
-   * Read raw data downloaded from https://www.kaggle.com/Cornell-University/arxiv
-   * turn it into a corpus and save it
-   * @param filepath Path to the raw data
-   */
-  def readDataAndSaveAsCorpus(filepath: String = "data/arxiv-metadata-oai-snapshot.json"): Dataset[ArxivArticle] =
-    (readData andThen saveCorpus)(filepath)
+  val readData: String => DataFrame =
+    sparkSession.read.option("delimiter", "\t").option("header", "true").csv(_)
 
   /**
    * Read the Corpus data
    * @param filepath path to the corpus
    * @return The corpus represented as a Dataset[ArxivArticle]
    */
-  def readCorpus(filepath: String = "data/corpus/corpus.json"): Dataset[ArxivArticle] =
-    readData(filepath).as[ArxivArticle]
-
-  def cleanAndSaveTokenizedCorpus(corpus: Dataset[ArxivArticle]): DataFrame =
-    (cleanCorpus andThen saveTokenizedCorpus)(corpus)
-
-  val cleanCorpus: Dataset[ArxivArticle] => DataFrame = { corpus =>
-    lazy val partiallyCleanedCorpus: DataFrame =
-      corpus
-        .map(article =>
-          (
-            article.title.filter(_ >= ' '), //remove control characters from title
-            clean(article.articleAbstract).filterNot(term => term.isEmpty || term.contains("-")),
-            article.documentId
-          )
-        )
-        .toDF("title", "tokens", "documentId")
-    removeStopWords(partiallyCleanedCorpus)
-  }
-
-  val saveTokenizedCorpus: DataFrame => DataFrame = { tokenizedCorpus =>
-    tokenizedCorpus.repartition(1).write.mode(SaveMode.Overwrite).json("data/cleaned")
-    tokenizedCorpus
-  }
-
+  def readCorpus(filepath: String = "data/movies_genres.csv"): Dataset[Movie] =
+    readData(filepath).select("title", "plot").sort($"title".asc).as[Movie]
 }
