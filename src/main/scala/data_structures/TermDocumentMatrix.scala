@@ -1,14 +1,17 @@
 package org.ir.project
 package data_structures
 
-import org.apache.spark.sql.Dataset
-import org.apache.spark.mllib.linalg.SparseMatrix
-
-import scala.math.log
 import sparkSession.implicits._
 
-import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, MatrixEntry}
-class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: CoordinateMatrix)
+import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, MatrixEntry, RowMatrix}
+import org.apache.spark.mllib.linalg.{Matrix, SingularValueDecomposition}
+import org.apache.spark.sql.Dataset
+
+import scala.math.log
+class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: RowMatrix) {
+  def computeSVD(numberOfSingularValues: Int): SingularValueDecomposition[RowMatrix, Matrix] =
+    matrix.computeSVD(numberOfSingularValues, computeU = true)
+}
 
 object TermDocumentMatrix {
   def apply(corpus: Dataset[Movie]): TermDocumentMatrix = {
@@ -16,8 +19,8 @@ object TermDocumentMatrix {
     val numberOfDocuments = invertedIndex.dictionary.select("documentId").distinct().count()
     val matrixEntries =
       invertedIndex.dictionary.as[(String, Long, Long)].rdd
-        .groupBy(_._1)//.mapValues(_.map { case (_, documentId, termFrequency) => (documentId, termFrequency) }) //leave out term in value array
-        .sortByKey() // sort by term
+        .groupBy(_._1) //group by term
+        .sortByKey() // sort by term, as ordering might be lost with grouping
         .zipWithIndex // add term index
         .flatMap {
           case ((_, docIdsAndFrequencies), termIndex) =>
@@ -27,6 +30,6 @@ object TermDocumentMatrix {
                 MatrixEntry(termIndex, documentId, termFrequency * log(numberOfDocuments/length))
             }
         }
-    new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries))
+    new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries).toRowMatrix)
   }
 }

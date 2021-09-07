@@ -48,7 +48,7 @@ package object project {
   val clean: String => Seq[String] = (normaliseText andThen tokenize)(_)
 
   /**
-   * read the raw data, downloadable from https://www.kaggle.com/Cornell-University/arxiv
+   * read the raw data, downloadable from https://github.com/davidsbatista/text-classification/blob/master/movies_genres.csv.bz2
    */
   val readData: String => DataFrame =
     sparkSession.read.option("delimiter", "\t").option("header", "true").csv(_)
@@ -56,7 +56,7 @@ package object project {
   /**
    * Read the Corpus data
    * @param filepath path to the corpus
-   * @return The corpus represented as a Dataset[ArxivArticle]
+   * @return The corpus represented as a Dataset[Movie]
    */
   def readCorpus(filepath: String = "data/movies_genres.csv"): Dataset[Movie] =
     readData(filepath).select("title", "plot").orderBy($"title".asc).as[Movie]
