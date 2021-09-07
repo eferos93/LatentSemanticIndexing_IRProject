@@ -6,21 +6,14 @@ import sparkSession.implicits._
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.functions.sum
 
-class InvertedIndex {
-  type Term = String
-  type DocumentId = Long
-  type TermFrequency = Long
-  var dictionary: Map[Term, Map[DocumentId, TermFrequency]] = Map.empty
-}
+class InvertedIndex(val dictionary: Map[String, Map[Long, Long]])
 
 object InvertedIndex {
   def apply(corpus: Dataset[Movie]): InvertedIndex = {
-    val invertedIndex = new InvertedIndex
-    val tokens = removeStopWords(
-      corpus.map(movie => clean(movie.plot)).toDF("tokens")
-    )
-    invertedIndex.dictionary =
-      tokens.as[Seq[String]].rdd
+    val dictionary: Map[String, Map[Long, Long]] =
+      removeStopWords(
+        corpus.map(movie => clean(movie.plot)).toDF("tokens")
+      ).as[Seq[String]].rdd //convert to Dataset[Seq[String]] then to RDD
         .zipWithIndex // zip with document Id
         .flatMap {
           case (tokens, documentId) => tokens.map(term => (term, documentId, 1))
@@ -29,11 +22,11 @@ object InvertedIndex {
         .groupBy("term", "documentId") // groupBy together with agg, is a relational style aggregation
         .agg(sum("count").as("termFrequency"))
         .as[(String, Long, Long)] // convert DataFrame to Dataset[(String, Long, Long)]
-        .collect() // collect the dataset and send it to the memory of the driver application
+        .collect() // collect the dataset and send it to the memory of the driver application then convert it to a HashMap
         .groupBy(_._1).mapValues {
           _.map { case (_, docId, termFrequency) => (docId, termFrequency) }.toMap
         }
-    invertedIndex
+    new InvertedIndex(dictionary)
   }
 
 }
