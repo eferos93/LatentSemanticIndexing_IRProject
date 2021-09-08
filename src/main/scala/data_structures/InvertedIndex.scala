@@ -23,7 +23,11 @@ object InvertedIndex {
         .toDF("term", "documentId", "count")
         .groupBy("term", "documentId") // groupBy together with agg, is a relational style aggregation
         .agg(sum("count").as("termFrequency"))
+    dictionary.repartition(1).write.option("delimiter", "\t").option("header", "true").csv("index/")
     new InvertedIndex(dictionary)
   }
 
+  def apply(pathToIndex: String): InvertedIndex = {
+    new InvertedIndex(readData(pathToIndex))
+  }
 }

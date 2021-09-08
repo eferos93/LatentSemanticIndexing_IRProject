@@ -8,14 +8,20 @@ import org.apache.spark.mllib.linalg.{Matrix, SingularValueDecomposition}
 import org.apache.spark.sql.Dataset
 
 import scala.math.log
+
 class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: RowMatrix) {
   def computeSVD(numberOfSingularValues: Int): SingularValueDecomposition[RowMatrix, Matrix] =
     matrix.computeSVD(numberOfSingularValues, computeU = true)
 }
 
 object TermDocumentMatrix {
-  def apply(corpus: Dataset[Movie]): TermDocumentMatrix = {
-    val invertedIndex = InvertedIndex(corpus)
+  def apply(corpus: Dataset[Movie]): TermDocumentMatrix =
+    computeTermDocumentMatrix(InvertedIndex(corpus))
+
+  def apply(pathToIndex: String): TermDocumentMatrix =
+    computeTermDocumentMatrix(InvertedIndex(pathToIndex))
+
+  def computeTermDocumentMatrix(invertedIndex: InvertedIndex): TermDocumentMatrix = {
     val numberOfDocuments = invertedIndex.numberOfDocuments
     val matrixEntries =
       invertedIndex.dictionary.as[(String, Long, Long)].rdd
@@ -27,7 +33,7 @@ object TermDocumentMatrix {
             val length = docIdsAndFrequencies.toSeq.length
             docIdsAndFrequencies.map {
               case (_, documentId, termFrequency) =>
-                MatrixEntry(termIndex, documentId, termFrequency * log(numberOfDocuments/length))
+                MatrixEntry(termIndex, documentId, termFrequency * log(numberOfDocuments / length))
             }
         }
     new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries).toRowMatrix)

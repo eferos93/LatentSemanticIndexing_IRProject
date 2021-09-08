@@ -48,7 +48,8 @@ package object project {
   val clean: String => Seq[String] = (normaliseText andThen tokenize)(_)
 
   /**
-   * read the raw data, downloadable from https://github.com/davidsbatista/text-classification/blob/master/movies_genres.csv.bz2
+   * data downloadable from https://github.com/davidsbatista/text-classification/blob/master/movies_genres.csv.bz2
+   * function used also to read back the index
    */
   val readData: String => DataFrame =
     sparkSession.read.option("delimiter", "\t").option("header", "true").csv(_)
