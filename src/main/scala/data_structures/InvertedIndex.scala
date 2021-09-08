@@ -6,7 +6,9 @@ import sparkSession.implicits._
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.{DataFrame, Dataset}
 
-class InvertedIndex(val dictionary: DataFrame)
+class InvertedIndex(val dictionary: DataFrame) {
+  val numberOfDocuments: Long = dictionary.select("documentId").distinct().count()
+}
 
 object InvertedIndex {
   def apply(corpus: Dataset[Movie]): InvertedIndex = {
@@ -21,12 +23,6 @@ object InvertedIndex {
         .toDF("term", "documentId", "count")
         .groupBy("term", "documentId") // groupBy together with agg, is a relational style aggregation
         .agg(sum("count").as("termFrequency"))
-//        .orderBy($"term".asc)
-//        .as[(String, Long, Long)] // convert DataFrame to Dataset[(String, Long, Long)]
-//        .collect() // collect the dataset as an Array[(String, Long, Long)] and send it to the memory of the driver application
-//        .groupBy(_._1).mapValues { // convert the array to a Map of Maps to a HashMap
-//          _.map { case (_, docId, termFrequency) => (docId, termFrequency) }.toMap
-//        }
     new InvertedIndex(dictionary)
   }
 

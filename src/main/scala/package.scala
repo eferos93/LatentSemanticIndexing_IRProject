@@ -33,7 +33,7 @@ package object project {
     //    - ^\\w : not a word
     //    - ^\\s : not a  space
     //    - ^- : not a -
-    text.filter(_ >= ' ').replaceAll("[^\\w^\\s^-]", "").toLowerCase()
+    text.replaceAll("[^\\w^\\s^-]", "").toLowerCase()
 
   val removeStopWords: DataFrame => DataFrame = dataFrame =>
     new StopWordsRemover()

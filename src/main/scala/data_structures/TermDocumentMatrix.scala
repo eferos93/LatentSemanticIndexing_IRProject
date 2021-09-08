@@ -16,7 +16,7 @@ class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: RowMatrix
 object TermDocumentMatrix {
   def apply(corpus: Dataset[Movie]): TermDocumentMatrix = {
     val invertedIndex = InvertedIndex(corpus)
-    val numberOfDocuments = invertedIndex.dictionary.select("documentId").distinct().count()
+    val numberOfDocuments = invertedIndex.numberOfDocuments
     val matrixEntries =
       invertedIndex.dictionary.as[(String, Long, Long)].rdd
         .groupBy(_._1) //group by term
