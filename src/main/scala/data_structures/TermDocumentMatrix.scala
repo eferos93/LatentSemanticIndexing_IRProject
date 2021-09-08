@@ -12,6 +12,9 @@ import scala.math.log
 class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: RowMatrix) {
   def computeSVD(numberOfSingularValues: Int): SingularValueDecomposition[RowMatrix, Matrix] =
     matrix.computeSVD(numberOfSingularValues, computeU = true)
+
+  def getVocabulary: Dataset[String] =
+    invertedIndex.dictionary.select("term").as[String]
 }
 
 object TermDocumentMatrix {
