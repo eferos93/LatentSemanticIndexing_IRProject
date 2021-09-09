@@ -85,10 +85,7 @@ package object project {
       .groupByKey
       .sortByKey().map(_._2) // sort rows and remove row indexes
       .map(buildRow) // restore order of elements in each row and remove column indexes
-    val t =
-      transposedRowsRDD
-        .collect()
-        .flatMap(_.toArray)
-    new DenseMatrix(numberRows.toInt, numberCols, t, isTransposed = true)
+    val transposedRowsAsArray = transposedRowsRDD.collect().flatMap(_.toArray)
+    new DenseMatrix(numberRows.toInt, numberCols, transposedRowsAsArray, isTransposed = true)
   }
 }
