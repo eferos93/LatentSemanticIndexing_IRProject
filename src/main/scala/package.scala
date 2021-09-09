@@ -2,7 +2,7 @@ package org.ir
 
 
 import org.apache.spark.ml.feature.StopWordsRemover
-import org.apache.spark.mllib.linalg.{DenseVector, Vector}
+import org.apache.spark.mllib.linalg.{DenseVector, Vector, DenseMatrix}
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.{SparkConf, SparkContext}
@@ -77,12 +77,18 @@ package object project {
     new DenseVector(resArr)
   }
 
-  def transposeRowMatrix(m: RowMatrix): RowMatrix = {
+  def transposeRowMatrix(m: RowMatrix): DenseMatrix = {
+    val numberRows = m.rows.count()
+    val numberCols = m.rows.first().size
     val transposedRowsRDD = m.rows.zipWithIndex.map{case (row, rowIndex) => rowToTransposedTriplet(row, rowIndex)}
       .flatMap(x => x) // now we have triplets (newRowIndex, (newColIndex, value))
       .groupByKey
       .sortByKey().map(_._2) // sort rows and remove row indexes
       .map(buildRow) // restore order of elements in each row and remove column indexes
-    new RowMatrix(transposedRowsRDD)
+    val t =
+      transposedRowsRDD
+        .collect()
+        .flatMap(_.toArray)
+    new DenseMatrix(numberRows.toInt, numberCols, t, isTransposed = true)
   }
 }

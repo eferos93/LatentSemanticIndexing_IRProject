@@ -12,8 +12,7 @@ class IRSystem(corpus: Dataset[Movie],
                singularValueDecomposition: SingularValueDecomposition[RowMatrix, Matrix]) {
   def mapQueryVector(queryVector: DenseVector): DenseVector = {
     val inverseDiagonalSigma = Matrices.diag(new DenseVector(singularValueDecomposition.s.toArray.map(math.pow(_, -1))))
-    inverseDiagonalSigma.multiply()
-    Matrices.
+    inverseDiagonalSigma.multiply(transposeRowMatrix(singularValueDecomposition.U)).multiply(queryVector)
   }
 }
 
