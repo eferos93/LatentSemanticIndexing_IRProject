@@ -2,6 +2,8 @@ package org.ir
 
 
 import org.apache.spark.ml.feature.StopWordsRemover
+import org.apache.spark.mllib.linalg.{DenseVector, Vector}
+import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ir.project.data_structures.Movie
@@ -61,4 +63,26 @@ package object project {
    */
   def readCorpus(filepath: String = "data/movies_genres.csv"): Dataset[Movie] =
     readData(filepath).select("title", "plot").orderBy($"title".asc).as[Movie]
+
+  def rowToTransposedTriplet(row: Vector, rowIndex: Long): Array[(Long, (Long, Double))] = {
+    val indexedRow = row.toArray.zipWithIndex
+    indexedRow.map{ case (value, colIndex) => (colIndex.toLong, (rowIndex, value)) }
+  }
+
+  def buildRow(rowWithIndexes: Iterable[(Long, Double)]): Vector = {
+    val resArr = new Array[Double](rowWithIndexes.size)
+    rowWithIndexes.foreach{ case (index, value) =>
+      resArr(index.toInt) = value
+    }
+    new DenseVector(resArr)
+  }
+
+  def transposeRowMatrix(m: RowMatrix): RowMatrix = {
+    val transposedRowsRDD = m.rows.zipWithIndex.map{case (row, rowIndex) => rowToTransposedTriplet(row, rowIndex)}
+      .flatMap(x => x) // now we have triplets (newRowIndex, (newColIndex, value))
+      .groupByKey
+      .sortByKey().map(_._2) // sort rows and remove row indexes
+      .map(buildRow) // restore order of elements in each row and remove column indexes
+    new RowMatrix(transposedRowsRDD)
+  }
 }
