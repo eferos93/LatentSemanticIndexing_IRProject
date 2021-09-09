@@ -13,13 +13,15 @@ class IRSystem(corpus: Dataset[Movie],
 object IRSystem {
   def apply(corpus: Dataset[Movie], k: Int): IRSystem = {
     val termDocumentMatrix = TermDocumentMatrix(corpus)
-    val vocabulary = termDocumentMatrix.getVocabulary
-    val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
-    new IRSystem(corpus, vocabulary, singularValueDecomposition)
+    initializeIRSystem(corpus, termDocumentMatrix, k)
   }
 
   def apply(corpus: Dataset[Movie], pathToDictionary: String, k: Int): IRSystem = {
     val termDocumentMatrix = TermDocumentMatrix(pathToDictionary)
+    initializeIRSystem(corpus, termDocumentMatrix, k)
+  }
+
+  def initializeIRSystem(corpus: Dataset[Movie], termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem = {
     val vocabulary = termDocumentMatrix.getVocabulary
     val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
     new IRSystem(corpus, vocabulary, singularValueDecomposition)
