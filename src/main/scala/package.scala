@@ -2,7 +2,7 @@ package org.ir
 
 
 import org.apache.spark.ml.feature.StopWordsRemover
-import org.apache.spark.mllib.linalg.{DenseVector, Vector, DenseMatrix}
+import org.apache.spark.mllib.linalg.{DenseMatrix, DenseVector, Matrix, Vector}
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.{SparkConf, SparkContext}
@@ -71,21 +71,26 @@ package object project {
 
   def buildRow(rowWithIndexes: Iterable[(Long, Double)]): Vector = {
     val resArr = new Array[Double](rowWithIndexes.size)
-    rowWithIndexes.foreach{ case (index, value) =>
-      resArr(index.toInt) = value
-    }
+    rowWithIndexes.foreach{ case (index, value) => resArr(index.toInt) = value }
     new DenseVector(resArr)
   }
 
-  def transposeRowMatrix(m: RowMatrix): DenseMatrix = {
-    val numberRows = m.rows.count()
-    val numberCols = m.rows.first().size
-    val transposedRowsRDD = m.rows.zipWithIndex.map{case (row, rowIndex) => rowToTransposedTriplet(row, rowIndex)}
+  def transposeRowMatrix(matrix: RowMatrix): DenseMatrix = {
+    val numberRows = matrix.rows.count()
+    val numberCols = matrix.rows.first().size
+    val transposedRowsRDD = matrix.rows.zipWithIndex.map{ case (row, rowIndex) => rowToTransposedTriplet(row, rowIndex) }
       .flatMap(identity(_)) // now we have triplets (newRowIndex, (newColIndex, value))
       .groupByKey
       .sortByKey().map(_._2) // sort rows and remove row indexes
       .map(buildRow) // restore order of elements in each row and remove column indexes
     val transposedRowsAsArray = transposedRowsRDD.collect().flatMap(_.toArray)
     new DenseMatrix(numberRows.toInt, numberCols, transposedRowsAsArray, isTransposed = true)
+  }
+
+  def matrixToRowMatrix(matrix: Matrix): RowMatrix = {
+    val columns = matrix.toArray.grouped(matrix.numRows)
+    val rows = columns.toSeq.transpose
+    val vectors = rows.map(row => new DenseVector(row.toArray))
+    new RowMatrix(sparkContext.parallelize(vectors))
   }
 }
