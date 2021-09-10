@@ -26,19 +26,18 @@ object TermDocumentMatrix {
 
   def computeTermDocumentMatrix(invertedIndex: InvertedIndex): TermDocumentMatrix = {
     val numberOfDocuments = invertedIndex.numberOfDocuments
-    val matrixEntries =
-      invertedIndex.dictionary.as[(String, Long, Long)].rdd
-        .groupBy(_._1) //group by term
-        .sortByKey() // sort by term, as ordering might be lost with grouping
-        .zipWithIndex // add term index
-        .flatMap {
-          case ((_, docIdsAndFrequencies), termIndex) =>
-            val length = docIdsAndFrequencies.toSeq.length
-            docIdsAndFrequencies.map {
-              case (_, documentId, termFrequency) =>
-                MatrixEntry(termIndex, documentId, termFrequency * log(numberOfDocuments / length))
-            }
-        }
+    val matrixEntries = invertedIndex.dictionary.as[(String, Long, Long)].rdd
+      .groupBy(_._1) //group by term
+      .sortByKey() // sort by term, as ordering might be lost with grouping
+      .zipWithIndex // add term index
+      .flatMap {
+        case ((_, docIdsAndFrequencies), termIndex) =>
+          val length = docIdsAndFrequencies.toSeq.length
+          docIdsAndFrequencies.map {
+            case (_, documentId, termFrequency) =>
+              MatrixEntry(termIndex, documentId, termFrequency * log(numberOfDocuments / length))
+          }
+      }
     new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries).toRowMatrix)
   }
 }

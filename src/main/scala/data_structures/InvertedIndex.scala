@@ -27,7 +27,7 @@ object InvertedIndex {
     new InvertedIndex(dictionary)
   }
 
-  def apply(pathToIndex: String): InvertedIndex = {
-    new InvertedIndex(readData(pathToIndex))
+  def apply(pathToDictionary: String): InvertedIndex = {
+    new InvertedIndex(readData(pathToDictionary))
   }
 }
