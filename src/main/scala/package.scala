@@ -81,7 +81,7 @@ package object project {
     val numberRows = m.rows.count()
     val numberCols = m.rows.first().size
     val transposedRowsRDD = m.rows.zipWithIndex.map{case (row, rowIndex) => rowToTransposedTriplet(row, rowIndex)}
-      .flatMap(x => x) // now we have triplets (newRowIndex, (newColIndex, value))
+      .flatMap(identity(_)) // now we have triplets (newRowIndex, (newColIndex, value))
       .groupByKey
       .sortByKey().map(_._2) // sort rows and remove row indexes
       .map(buildRow) // restore order of elements in each row and remove column indexes

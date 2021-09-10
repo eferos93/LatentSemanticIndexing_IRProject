@@ -2,17 +2,16 @@ package org.ir.project
 
 import data_structures.{Movie, TermDocumentMatrix}
 
-import breeze.linalg.Transpose
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
-import org.apache.spark.mllib.linalg.{DenseVector, Matrices, Matrix, SingularValueDecomposition}
+import org.apache.spark.mllib.linalg.{DenseVector, Matrices, Matrix, Vector}
 import org.apache.spark.sql.Dataset
 
 class IRSystem(corpus: Dataset[Movie],
                vocabulary: Dataset[String],
-               singularValueDecomposition: SingularValueDecomposition[RowMatrix, Matrix]) {
+               U: RowMatrix, sigma: Vector, V: Matrix) {
   def mapQueryVector(queryVector: DenseVector): DenseVector = {
-    val inverseDiagonalSigma = Matrices.diag(new DenseVector(singularValueDecomposition.s.toArray.map(math.pow(_, -1))))
-    inverseDiagonalSigma.multiply(transposeRowMatrix(singularValueDecomposition.U)).multiply(queryVector)
+    val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
+    inverseDiagonalSigma.multiply(transposeRowMatrix(U)).multiply(queryVector)
   }
 }
 
@@ -30,6 +29,9 @@ object IRSystem {
   def initializeIRSystem(corpus: Dataset[Movie], termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem = {
     val vocabulary = termDocumentMatrix.getVocabulary
     val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
-    new IRSystem(corpus, vocabulary, singularValueDecomposition)
+    val U = singularValueDecomposition.U
+    val sigma = singularValueDecomposition.s
+    val V = singularValueDecomposition.V
+    new IRSystem(corpus, vocabulary, U, sigma, V)
   }
 }
