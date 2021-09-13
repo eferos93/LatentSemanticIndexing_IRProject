@@ -94,7 +94,6 @@ package object project {
 //  }
 
   def normaliseMatrix(matrix: DenseMatrix): DenseMatrix = {
-    import sparkSession.implicits._
     val matrixAsDataFrame = matrix.rowIter.toSeq.map(_.toArray).toDF("unnormalised")
     val normalisedMatrix = new Normalizer()
       .setInputCol("unnormalised")
