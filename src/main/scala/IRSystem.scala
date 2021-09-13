@@ -1,32 +1,31 @@
 package org.ir.project
 
 import data_structures.{Movie, TermDocumentMatrix}
-
-import org.apache.spark.mllib.linalg.distributed.RowMatrix
-import org.apache.spark.mllib.linalg.{DenseVector, Matrices, Matrix, SparseVector, Vector, Vectors}
-import org.apache.spark.mllib.feature.Normalizer
-import org.apache.spark.sql.Dataset
 import sparkSession.implicits._
+
+import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Vector, Vectors}
+import org.apache.spark.sql.Dataset
 
 class IRSystem(corpus: Dataset[Movie],
                vocabulary: Dataset[String],
-               U: RowMatrix, sigma: Vector, V: RowMatrix) {
+               U: DenseMatrix, sigma: DenseVector, V: DenseMatrix) {
+
   def mapQueryVector(queryVector: Vector): DenseVector = {
+    sigma.toDense
     val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
-    inverseDiagonalSigma.multiply(transposeRowMatrix(U)).multiply(queryVector)
+    inverseDiagonalSigma.multiply(U.transpose).multiply(queryVector)
   }
 
   def buildQueryVector(textQuery: String): Vector = {
     val tokens = removeStopWords(List(clean(textQuery)).toDF("tokens")).first().getAs[Seq[String]](0)
     val asRDD = vocabulary.rdd.zipWithIndex.map { case (word, index) => (index.toInt, tokens.count(_ == word).toDouble) }
-    val queryVector = Vectors.sparse(vocabulary.count().toInt, asRDD.collect())
+    val queryVector = Vectors.sparse(vocabulary.count.toInt, asRDD.collect)
     mapQueryVector(queryVector)
   }
 
   def answerQuery(textQuery: String, top: Int = 5) = {
     val queryVector = buildQueryVector(textQuery)
-    val scores = V.rows.map(queryVector.dot).zipWithIndex().sortByKey(ascending = false).take(top)
-
+    val scores = V.rowIter.toStream.map(queryVector.dot).zipWithIndex.sortBy(_._1).take(top)
   }
 }
 
@@ -45,8 +44,9 @@ object IRSystem {
     val vocabulary = termDocumentMatrix.getVocabulary
     val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
     val U = singularValueDecomposition.U
-    val sigma = singularValueDecomposition.s
-    val V = matrixToRowMatrix(singularValueDecomposition.V)
-    new IRSystem(corpus, vocabulary, U, sigma, V)
+    val sigma = singularValueDecomposition.s.asML.toDense
+    val V = normaliseMatrix(singularValueDecomposition.V.asML.toDense)
+    val UasDense = new DenseMatrix(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.toArray).collect, isTransposed = false)
+    new IRSystem(corpus, vocabulary, UasDense, sigma, V)
   }
 }

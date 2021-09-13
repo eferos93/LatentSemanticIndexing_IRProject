@@ -3,8 +3,9 @@ package data_structures
 
 import sparkSession.implicits._
 
+// for the SVD I have to use the old mllib API
 import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, MatrixEntry, RowMatrix}
-import org.apache.spark.mllib.linalg.{Matrix, SingularValueDecomposition}
+import org.apache.spark.mllib.linalg.{SingularValueDecomposition, Matrix}
 import org.apache.spark.sql.Dataset
 
 import scala.math.log
@@ -37,6 +38,6 @@ object TermDocumentMatrix {
               MatrixEntry(termIndex, documentId, termFrequency * log(numberOfDocuments / length))
           }
       }
-    new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries).toRowMatrix)
+    new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries).toRowMatrix())
   }
 }
