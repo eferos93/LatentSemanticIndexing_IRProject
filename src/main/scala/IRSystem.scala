@@ -22,9 +22,12 @@ class IRSystem(corpus: Dataset[Movie],
     mapQueryVector(queryVector)
   }
 
-  def answerQuery(textQuery: String, top: Int = 5) = {
+  def answerQuery(textQuery: String, top: Int = 5): Seq[(Movie, Double)] = {
     val queryVector = buildQueryVector(textQuery)
-    val scores = V.rowIter.toStream.map(queryVector.dot).zipWithIndex.sortBy(_._1).take(top)
+    V.rowIter.toStream
+      .map(queryVector.dot).zipWithIndex.sortBy(_._1)
+      .map { case (score, documentId) => (corpus.where($"id" === documentId + 1).first, score) }
+      .take(top)
   }
 }
 
