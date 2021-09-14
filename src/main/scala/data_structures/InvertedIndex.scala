@@ -4,7 +4,7 @@ package data_structures
 import sparkSession.implicits._
 
 import org.apache.spark.sql.functions.sum
-import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.{DataFrame, Dataset, SaveMode}
 
 class InvertedIndex(val dictionary: DataFrame, val numberOfDocuments: Long)
 
@@ -15,14 +15,13 @@ object InvertedIndex {
         corpus
           .map(movie => (movie.id, clean(movie.plot)))
           .toDF("documentId", "tokens")
-      ).as[(Int, Seq[String])].rdd //convert to Dataset[(Int, Seq[String])] then to RDD[(Int, Seq[String])]
-        .flatMap {
-          case (documentId, tokens) => tokens.map(term => (term, documentId, 1))
-        }
+      ).as[(Int, Seq[String])]
+        .flatMap { case (documentId, tokens) => tokens.map(term => (term, documentId, 1)) }
         .toDF("term", "documentId", "count")
         .groupBy("term", "documentId") // groupBy together with agg, is a relational style aggregation
         .agg(sum("count").as("termFrequency"))
-    dictionary.repartition(1).write.option("delimiter", "\t").option("header", "true").csv("dictionary/")
+    dictionary.repartition(1)
+      .write.mode(SaveMode.Overwrite).option("delimiter", "\t").option("header", "true").csv("dictionary/")
     new InvertedIndex(dictionary, corpus.count)
   }
 
