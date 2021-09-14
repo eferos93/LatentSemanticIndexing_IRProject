@@ -35,7 +35,8 @@ object TermDocumentMatrix {
           val length = docIdsAndFrequencies.toSeq.length
           docIdsAndFrequencies.map {
             case (_, documentId, termFrequency) =>
-              MatrixEntry(termIndex, documentId, termFrequency * log(numberOfDocuments / length))
+//              docIds starts from 1, so we subtract 1
+              MatrixEntry(termIndex, documentId - 1, termFrequency * log(numberOfDocuments / length))
           }
       }
     new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries).toRowMatrix())
