@@ -3,7 +3,9 @@ package org.ir
 
 import org.apache.spark.ml.feature.{Normalizer, StopWordsRemover}
 import org.apache.spark.ml.linalg.{DenseMatrix, Matrices}
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions.row_number
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ir.project.data_structures.Movie
 
@@ -41,7 +43,7 @@ package object project {
       .setInputCol("tokens")
       .setOutputCol("tokensCleaned")
       .transform(dataFrame)
-      .select( "tokensCleaned")
+      .select( "documentId", "tokensCleaned")
       .withColumnRenamed("tokensCleaned", "tokens")
 
   val tokenize: String => Seq[String] = _.split(" ").filterNot(_.isEmpty).toSeq
@@ -61,7 +63,12 @@ package object project {
    * @return The corpus represented as a Dataset[Movie]
    */
   def readCorpus(filepath: String = "data/movies_genres.csv"): Dataset[Movie] =
-    readData(filepath).select("title", "plot").orderBy($"title".asc).as[Movie]
+    readData(filepath)
+      .select("title", "plot")
+      .withColumn("id", row_number.over(Window.orderBy($"title".asc))) // Window functions https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html
+      .select("id", "title", "plot")
+      .as[Movie]
+
 
 //  def rowToTransposedTriplet(row: Vector, rowIndex: Long): Array[(Long, (Long, Double))] = {
 //    val indexedRow = row.toArray.zipWithIndex
