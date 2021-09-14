@@ -11,7 +11,6 @@ class IRSystem(corpus: Dataset[Movie],
                U: DenseMatrix, sigma: DenseVector, V: DenseMatrix) {
 
   def mapQueryVector(queryVector: Vector): DenseVector = {
-    sigma.toDense
     val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
     inverseDiagonalSigma.multiply(U.transpose).multiply(queryVector)
   }
@@ -41,12 +40,11 @@ object IRSystem {
   }
 
   def initializeIRSystem(corpus: Dataset[Movie], termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem = {
-    val vocabulary = termDocumentMatrix.getVocabulary
     val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
     val U = singularValueDecomposition.U
+    val UasDense = new DenseMatrix(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.toArray).collect, isTransposed = false)
     val sigma = singularValueDecomposition.s.asML.toDense
     val V = normaliseMatrix(singularValueDecomposition.V.asML.toDense)
-    val UasDense = new DenseMatrix(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.toArray).collect, isTransposed = false)
-    new IRSystem(corpus, vocabulary, UasDense, sigma, V)
+    new IRSystem(corpus, termDocumentMatrix.getVocabulary, UasDense, sigma, V)
   }
 }
