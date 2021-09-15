@@ -3,15 +3,17 @@ package data_structures
 
 import sparkSession.implicits._
 
+import org.apache.spark.mllib.linalg.distributed.IndexedRowMatrix
+
 // for the SVD I have to use the old mllib API
-import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, MatrixEntry, RowMatrix}
-import org.apache.spark.mllib.linalg.{SingularValueDecomposition, Matrix}
+import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, MatrixEntry}
+import org.apache.spark.mllib.linalg.{Matrix, SingularValueDecomposition}
 import org.apache.spark.sql.Dataset
 
 import scala.math.log
 
-class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: RowMatrix) {
-  def computeSVD(numberOfSingularValues: Int): SingularValueDecomposition[RowMatrix, Matrix] =
+class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRowMatrix) {
+  def computeSVD(numberOfSingularValues: Int): SingularValueDecomposition[IndexedRowMatrix, Matrix] =
     matrix.computeSVD(numberOfSingularValues, computeU = true)
 
   def getVocabulary: Dataset[String] = invertedIndex.dictionary.select("term").as[String]
@@ -24,6 +26,7 @@ object TermDocumentMatrix {
   def apply(pathToIndex: String): TermDocumentMatrix =
     computeTermDocumentMatrix(InvertedIndex(pathToIndex))
 
+//  TODO: refactor this to make it more efficient (create directly a RowMatrix)
   def computeTermDocumentMatrix(invertedIndex: InvertedIndex): TermDocumentMatrix = {
     val numberOfDocuments = invertedIndex.numberOfDocuments
     val matrixEntries = invertedIndex.dictionary.as[(String, Long, Long)].rdd
@@ -39,6 +42,6 @@ object TermDocumentMatrix {
               MatrixEntry(termIndex, documentId - 1, termFrequency * log(numberOfDocuments / length))
           }
       }
-    new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries).toRowMatrix())
+    new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries).toIndexedRowMatrix())
   }
 }

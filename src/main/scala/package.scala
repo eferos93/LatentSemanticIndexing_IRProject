@@ -5,7 +5,7 @@ import org.apache.spark.ml.feature.{Normalizer, StopWordsRemover}
 import org.apache.spark.ml.linalg.{DenseMatrix, Matrices}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.row_number
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+import org.apache.spark.sql.{ColumnName, DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ir.project.data_structures.Movie
 
@@ -38,12 +38,12 @@ package object project {
     //    - ^- : not a -
     text.replaceAll("[^\\w^\\s^-]", "").toLowerCase()
 
-  val removeStopWords: DataFrame => DataFrame = dataFrame =>
+  def removeStopWords(dataFrame: DataFrame, extraColumns: Seq[ColumnName] = Seq($"documentId")): DataFrame =
     new StopWordsRemover()
       .setInputCol("tokens")
       .setOutputCol("tokensCleaned")
       .transform(dataFrame)
-      .select( "documentId", "tokensCleaned")
+      .select(extraColumns :+ $"tokensCleaned":_*) // :+ ::= append element to Seq; :_* ::= convert Seq[ColumnName] to ColumnName*
       .withColumnRenamed("tokensCleaned", "tokens")
 
   val tokenize: String => Seq[String] = _.split(" ").filterNot(_.isEmpty).toSeq
@@ -54,8 +54,8 @@ package object project {
    * data downloadable from https://github.com/davidsbatista/text-classification/blob/master/movies_genres.csv.bz2
    * function used also to read back the index
    */
-  val readData: String => DataFrame =
-    sparkSession.read.option("delimiter", "\t").option("header", "true").csv(_)
+  def readData(filepath: String, delimiter: String = "\t"): DataFrame =
+    sparkSession.read.option("delimiter", delimiter).option("header", "true").csv(filepath)
 
   /**
    * Read the Corpus data

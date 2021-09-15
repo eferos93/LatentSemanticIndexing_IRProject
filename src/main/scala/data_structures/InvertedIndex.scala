@@ -21,12 +21,12 @@ object InvertedIndex {
         .groupBy("term", "documentId") // groupBy together with agg, is a relational style aggregation
         .agg(sum("count").as("termFrequency"))
     dictionary.repartition(1)
-      .write.mode(SaveMode.Overwrite).option("delimiter", "\t").option("header", "true").csv("dictionary/")
+      .write.mode(SaveMode.Ignore).option("delimiter", ",").option("header", "true").csv("dictionary/")
     new InvertedIndex(dictionary, corpus.count)
   }
 
   def apply(pathToDictionary: String): InvertedIndex = {
-    val dictionary = readData(pathToDictionary)
+    val dictionary = readData(pathToDictionary, delimiter = ",")
     new InvertedIndex(dictionary, dictionary.select("documentId").distinct.count)
   }
 }

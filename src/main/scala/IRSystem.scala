@@ -17,7 +17,7 @@ class IRSystem(corpus: Dataset[Movie],
 
   private def buildQueryVector(textQuery: String): Vector = {
     val tokens = removeStopWords(
-      List(clean(textQuery)).toDF("tokens")
+      List(clean(textQuery)).toDF("tokens"), extraColumns = Seq.empty
     ).first().getAs[Seq[String]](0)
     val asRDD = vocabulary.rdd.zipWithIndex.map { case (word, index) => (index.toInt, tokens.count(_ == word).toDouble) }
     val queryVector = Vectors.sparse(vocabulary.count.toInt, asRDD.collect)
@@ -34,6 +34,7 @@ class IRSystem(corpus: Dataset[Movie],
 
   def query(query: String, top: Int = 5): Unit =
     println(answerQuery(query, top).mkString("\n"))
+
 }
 
 object IRSystem {
@@ -50,9 +51,12 @@ object IRSystem {
   private def initializeIRSystem(corpus: Dataset[Movie], termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem = {
     val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
     val U = singularValueDecomposition.U
-    val UasDense = new DenseMatrix(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.toArray).collect, isTransposed = false)
+    val UasDense =
+      new DenseMatrix(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.vector.toArray).collect, isTransposed = false)
     val sigma = singularValueDecomposition.s.asML.toDense
-    val V = normaliseMatrix(singularValueDecomposition.V.asML.toDense)
-    new IRSystem(corpus, termDocumentMatrix.getVocabulary, UasDense, sigma, V)
+//  normalising is just needed to have scores between 0 and 1, but it won't change the rank
+//    it is kinda expensive as the matrix is big, thus this step is skipped
+//    val V = normaliseMatrix(singularValueDecomposition.V.asML.toDense)
+    new IRSystem(corpus, termDocumentMatrix.getVocabulary, UasDense, sigma, singularValueDecomposition.V.asML.toDense)
   }
 }
