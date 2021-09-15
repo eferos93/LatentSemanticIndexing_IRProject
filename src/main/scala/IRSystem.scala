@@ -21,8 +21,8 @@ class IRSystem(val corpus: Dataset[Movie],
     val tokens = removeStopWords(
       List(clean(textQuery)).toDF("tokens"), extraColumns = Seq.empty
     ).first().getAs[Seq[String]](0)
-    val asRDD = vocabulary.rdd.zipWithIndex.map { case (word, index) => (index.toInt, tokens.count(_ == word).toDouble) }
-    val queryVector = Vectors.sparse(vocabulary.count.toInt, asRDD.collect)
+//    val asRDD = vocabulary.rdd.zipWithIndex.map { case (word, index) => (index.toInt, tokens.count(_ == word).toDouble) }
+    val queryVector = Vectors.dense(vocabulary.map(word => tokens.count(_ == word).toDouble).collect)
     mapQueryVector(queryVector)
   }
 
