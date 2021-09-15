@@ -10,25 +10,27 @@ class IRSystem(val corpus: Dataset[Movie],
                val vocabulary: Dataset[String],
                val U: DenseMatrix, val sigma: DenseVector, val V: DenseMatrix) {
 
-  private def mapQueryVector(queryVector: DenseVector): DenseVector = {
+  private def mapQueryVector(queryVector: Vector): DenseVector = {
     val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
     val partial = inverseDiagonalSigma.multiply(U.transpose)
     partial.multiply(queryVector)
   }
 
-  private def buildQueryVector(textQuery: String): DenseVector = {
+  private def buildQueryVector(textQuery: String): Vector = {
     val tokens = removeStopWords(
       List(clean(textQuery)).toDF("tokens"), extraColumns = Seq.empty
     ).first().getAs[Seq[String]](0)
-//    val asRDD = vocabulary.rdd.zipWithIndex.map { case (word, index) => (index.toInt, tokens.count(_ == word).toDouble) }
-    val queryVector = Vectors.dense(vocabulary.map(word => tokens.count(_ == word).toDouble).collect)
-    mapQueryVector(queryVector.toDense)
+    val asRDD = vocabulary.rdd.zipWithIndex.map { case (word, index) => (index.toInt, tokens.count(_ == word).toDouble) }
+    val queryVector = Vectors.sparse(vocabulary.count.toInt, asRDD.collect)
+    mapQueryVector(queryVector)
   }
 
   private def answerQuery(textQuery: String, top: Int): Seq[(Movie, Double)] = {
     val queryVector = buildQueryVector(textQuery)
     V.rowIter.toStream
-      .map(queryVector.dot).zipWithIndex.sortBy(_._1)
+      .map(queryVector.dot).zipWithIndex
+      .map { case (score, documentId) => (-score, documentId) }
+      .sortBy(_._1)(Ordering[Double].reverse)
       .map { case (score, documentId) => (corpus.where($"id" === documentId + 1).first, score) }
       .take(top)
   }
