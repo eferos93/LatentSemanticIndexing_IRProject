@@ -5,6 +5,7 @@ import sparkSession.implicits._
 
 import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Vector, Vectors}
 import org.apache.spark.sql.Dataset
+import org.apache.spark.storage.StorageLevel
 
 class IRSystem(val corpus: Dataset[Movie],
                val vocabulary: Dataset[String],
@@ -60,6 +61,8 @@ object IRSystem {
 //  normalising is just needed to have scores between 0 and 1, but it won't change the rank
 //    it is kinda expensive as the matrix is big, thus this step is skipped
 //    val V = normaliseMatrix(singularValueDecomposition.V.asML.toDense)
-    new IRSystem(corpus, termDocumentMatrix.getVocabulary, UasDense, sigma, singularValueDecomposition.V.asML.toDense)
+    new IRSystem(corpus.persist(StorageLevel.MEMORY_ONLY_SER),
+      termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
+      UasDense, sigma, singularValueDecomposition.V.asML.toDense)
   }
 }
