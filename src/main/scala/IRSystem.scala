@@ -6,22 +6,23 @@ import sparkSession.implicits._
 import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Vector, Vectors}
 import org.apache.spark.sql.Dataset
 
-class IRSystem(corpus: Dataset[Movie],
-               vocabulary: Dataset[String],
-               U: DenseMatrix, sigma: DenseVector, V: DenseMatrix) {
+class IRSystem(val corpus: Dataset[Movie],
+               val vocabulary: Dataset[String],
+               val U: DenseMatrix, val sigma: DenseVector, val V: DenseMatrix) {
 
-  private def mapQueryVector(queryVector: Vector): DenseVector = {
+  private def mapQueryVector(queryVector: DenseVector): DenseVector = {
     val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
-    inverseDiagonalSigma.multiply(U.transpose).multiply(queryVector)
+    val partial = inverseDiagonalSigma.multiply(U.transpose)
+    partial.multiply(queryVector)
   }
 
-  private def buildQueryVector(textQuery: String): Vector = {
+  private def buildQueryVector(textQuery: String): DenseVector = {
     val tokens = removeStopWords(
       List(clean(textQuery)).toDF("tokens"), extraColumns = Seq.empty
     ).first().getAs[Seq[String]](0)
-    val asRDD = vocabulary.rdd.zipWithIndex.map { case (word, index) => (index.toInt, tokens.count(_ == word).toDouble) }
-    val queryVector = Vectors.sparse(vocabulary.count.toInt, asRDD.collect)
-    mapQueryVector(queryVector)
+//    val asRDD = vocabulary.rdd.zipWithIndex.map { case (word, index) => (index.toInt, tokens.count(_ == word).toDouble) }
+    val queryVector = Vectors.dense(vocabulary.map(word => tokens.count(_ == word).toDouble).collect)
+    mapQueryVector(queryVector.toDense)
   }
 
   private def answerQuery(textQuery: String, top: Int): Seq[(Movie, Double)] = {
