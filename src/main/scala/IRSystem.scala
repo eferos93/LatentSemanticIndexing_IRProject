@@ -9,7 +9,7 @@ import org.apache.spark.storage.StorageLevel
 
 class IRSystem(val corpus: Dataset[Movie],
                val vocabulary: Dataset[String],
-               val U: DenseMatrix, val sigma: DenseVector, val V: DenseMatrix) {
+               val U: DenseMatrix, val sigma: DenseVector, val V: DenseMatrix) extends Serializable {
 
   private def mapQueryVector(queryVector: Vector): DenseVector = {
     val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
@@ -28,15 +28,11 @@ class IRSystem(val corpus: Dataset[Movie],
 
   private def answerQuery(textQuery: String, top: Int): Seq[(Movie, Double)] = {
     val queryVector = buildQueryVector(textQuery)
-    V.rowIter.toStream.zipWithIndex
-      .map {
-        case (vector, documentId) =>
-          (corpus.where($"id" === documentId + 1).first, -queryVector.dot(vector))
-      }//.zipWithIndex
-//      .map { case (score, documentId) => (corpus.where($"id" === documentId + 1).first, -score) }
-      .sortBy(_._2)(Ordering[Double].reverse) // descending sorting
-//      .map { case (score, documentId) => (corpus.where($"id" === documentId + 1).first, score) }
+    sparkContext.parallelize(V.rowIter.toSeq).zipWithIndex
+      .map { case (vector, documentId) => (documentId, -queryVector.dot(vector))}
+      .sortBy(_._2, ascending = false) // descending sorting
       .take(top)
+      .map { case (documentId, score) => (corpus.where($"id" === documentId + 1).first, score)}
   }
 
   def query(query: String, top: Int = 5): Unit =
