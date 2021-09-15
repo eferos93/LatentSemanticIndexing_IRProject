@@ -30,9 +30,9 @@ class IRSystem(val corpus: Dataset[Movie],
     val queryVector = buildQueryVector(textQuery)
     V.rowIter.toStream
       .map(queryVector.dot).zipWithIndex
-      .map { case (score, documentId) => (-score, documentId) }
-      .sortBy(_._1)(Ordering[Double].reverse) // descending sorting
-      .map { case (score, documentId) => (corpus.where($"id" === documentId + 1).first, score) }
+      .map { case (score, documentId) => (corpus.where($"id" === documentId + 1).first, -score) }
+      .sortBy(_._2)(Ordering[Double].reverse) // descending sorting
+//      .map { case (score, documentId) => (corpus.where($"id" === documentId + 1).first, score) }
       .take(top)
   }
 
