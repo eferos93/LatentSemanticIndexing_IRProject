@@ -29,8 +29,9 @@ class IRSystem(val corpus: Dataset[Movie],
   private def answerQuery(textQuery: String, top: Int): Seq[(Movie, Double)] = {
     val queryVector = buildQueryVector(textQuery)
     V.rowIter.toStream.zipWithIndex
-      .map { case (vector, documentId) =>
-        (corpus.where($"id" === documentId + 1).first, -queryVector.dot(vector))
+      .map {
+        case (vector, documentId) =>
+          (corpus.where($"id" === documentId + 1).first, -queryVector.dot(vector))
       }//.zipWithIndex
 //      .map { case (score, documentId) => (corpus.where($"id" === documentId + 1).first, -score) }
       .sortBy(_._2)(Ordering[Double].reverse) // descending sorting
@@ -63,8 +64,8 @@ object IRSystem {
 //  normalising is just needed to have scores between 0 and 1, but it won't change the rank
 //    it is kinda expensive as the matrix is big, thus this step is skipped
 //    val V = normaliseMatrix(singularValueDecomposition.V.asML.toDense)
-    new IRSystem(corpus.persist(StorageLevel.MEMORY_ONLY_SER),
-      termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
+    new IRSystem(corpus/*.persist(StorageLevel.MEMORY_ONLY_SER)*/,
+      termDocumentMatrix.getVocabulary/*.persist(StorageLevel.MEMORY_ONLY_SER)*/,
       UasDense, sigma, singularValueDecomposition.V.asML.toDense)
   }
 }
