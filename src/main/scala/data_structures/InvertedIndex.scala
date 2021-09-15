@@ -4,7 +4,7 @@ package data_structures
 import sparkSession.implicits._
 
 import org.apache.spark.sql.functions.sum
-import org.apache.spark.sql.{DataFrame, Dataset, SaveMode}
+import org.apache.spark.sql.{DataFrame, Dataset, Encoders, SaveMode}
 
 class InvertedIndex(val dictionary: DataFrame, val numberOfDocuments: Long)
 

@@ -5,7 +5,8 @@ import org.apache.spark.ml.feature.{Normalizer, StopWordsRemover}
 import org.apache.spark.ml.linalg.{DenseMatrix, Matrices}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.row_number
-import org.apache.spark.sql.{ColumnName, DataFrame, Dataset, Row, SparkSession}
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql._
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ir.project.data_structures.Movie
 
@@ -55,7 +56,10 @@ package object project {
    * function used also to read back the index
    */
   def readData(filepath: String, delimiter: String = "\t"): DataFrame =
-    sparkSession.read.option("delimiter", delimiter).option("header", "true").csv(filepath)
+    sparkSession.read
+      .option("delimiter", delimiter)
+      .option("inferSchema", value = true)
+      .option("header", "true").csv(filepath)
 
   /**
    * Read the Corpus data

@@ -29,7 +29,7 @@ object TermDocumentMatrix {
 //  TODO: refactor this to make it more efficient (create directly a RowMatrix)
   def computeTermDocumentMatrix(invertedIndex: InvertedIndex): TermDocumentMatrix = {
     val numberOfDocuments = invertedIndex.numberOfDocuments
-    val matrixEntries = invertedIndex.dictionary.as[(String, Long, Long)].rdd
+    val matrixEntries = invertedIndex.dictionary.as[(String, Int, Int)].rdd
       .groupBy(_._1) //group by term
       .sortByKey() // sort by term, as ordering might be lost with grouping
       .zipWithIndex // add term index
