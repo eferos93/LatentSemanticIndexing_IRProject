@@ -14,6 +14,15 @@ val sparkDependencies = Seq(
 )
 
 libraryDependencies ++= sparkDependencies
+
+libraryDependencies  ++= Seq(
+  // Last stable release
+  "org.scalanlp" %% "breeze" % "1.3",
+
+  // The visualization library is distributed separately as well.
+  // It depends on LGPL code
+  "org.scalanlp" %% "breeze-viz" % "1.3"
+)
 //error importing the stemming library, looks like it doesn't support scala 2.12
 //which is mandatory version for spark
 //libraryDependencies += "com.github.master" %% "spark-stemming" % "0.2.1"

@@ -30,7 +30,7 @@ class IRSystem(val corpus: Dataset[Movie],
       .map { case (vector, documentId) => (documentId, -queryVector.dot(vector))}
       .sortBy(_._2, ascending = false) // descending sorting
       .take(top)
-      .map { case (documentId, score) => (corpus.where($"id" === documentId + 1).first, score)}
+      .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score)}
   }
 
   def query(query: String, top: Int = 5): Unit =

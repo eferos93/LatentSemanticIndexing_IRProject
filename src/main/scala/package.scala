@@ -4,8 +4,6 @@ package org.ir
 import org.apache.spark.ml.feature.{Normalizer, StopWordsRemover}
 import org.apache.spark.ml.linalg.{DenseMatrix, Matrices}
 import org.apache.spark.sql._
-import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.row_number
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ir.project.data_structures.Movie
 
@@ -16,6 +14,7 @@ package object project {
     .setAppName("Latent Semantic Indexing")
     .setMaster("local[*]")
     .set("spark.cores.max", Runtime.getRuntime.availableProcessors.toString)
+//    .set("spark.driver.memory", "3g")
 
   lazy val sparkSession: SparkSession = SparkSession.builder.config(sparkConfiguration).getOrCreate()
   lazy val sparkContext: SparkContext = sparkSession.sparkContext
@@ -57,12 +56,13 @@ package object project {
    */
   def readData(filepath: String,
                delimiter: String = "\t",
-               columnsToSelect: Option[Seq[ColumnName]] = None): DataFrame = {
+               columnsToSelect: Option[Seq[ColumnName]] = None,
+               isHeader: Boolean = false): DataFrame = {
     val data =
       sparkSession.read
         .option("delimiter", delimiter)
         .option("inferSchema", value = true)
-        .option("header", "false").csv(filepath)
+        .option("header", isHeader).csv(filepath)
 
     columnsToSelect match {
       case Some(columns) => data.select(columns:_*)
@@ -86,7 +86,10 @@ package object project {
     titles
       .join(descriptions, titles("internalId") === descriptions("internalId"))
       .select("title", "plot")
-      .withColumn("id", row_number.over(Window.orderBy($"title".asc))) // Window functions https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html
+      .orderBy("title").rdd
+      .zipWithIndex.map { case (row, documentId) => (row.getString(0), row.getString(1), documentId) }
+      .toDF("title", "plot", "id")
+//      .withColumn("id", row_number.over(Window.orderBy($"title".asc))) // Window functions https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html
       .select("id", "title", "plot")
       .as[Movie]
   }

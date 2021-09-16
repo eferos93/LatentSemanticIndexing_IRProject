@@ -15,7 +15,7 @@ object InvertedIndex {
         corpus
           .map(movie => (movie.id, clean(movie.plot)))
           .toDF("documentId", "tokens")
-      ).as[(Int, Seq[String])]
+      ).as[(Long, Seq[String])]
         .flatMap { case (documentId, tokens) => tokens.map(term => (term, documentId, 1)) }
         .toDF("term", "documentId", "count")
         .groupBy("term", "documentId") // groupBy together with agg, is a relational style aggregation
@@ -26,7 +26,7 @@ object InvertedIndex {
   }
 
   def apply(pathToDictionary: String): InvertedIndex = {
-    val dictionary = readData(pathToDictionary, delimiter = ",")
+    val dictionary = readData(pathToDictionary, delimiter = ",", isHeader = true)
     new InvertedIndex(dictionary, dictionary.select("documentId").distinct.count)
   }
 }
