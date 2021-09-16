@@ -3,10 +3,9 @@ package org.ir
 
 import org.apache.spark.ml.feature.{Normalizer, StopWordsRemover}
 import org.apache.spark.ml.linalg.{DenseMatrix, Matrices}
+import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.row_number
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql._
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ir.project.data_structures.Movie
 
@@ -20,6 +19,7 @@ package object project {
 
   lazy val sparkSession: SparkSession = SparkSession.builder.config(sparkConfiguration).getOrCreate()
   lazy val sparkContext: SparkContext = sparkSession.sparkContext
+  sparkContext.setLogLevel("WARN")
 
   import sparkSession.implicits._
 
@@ -72,37 +72,6 @@ package object project {
       .withColumn("id", row_number.over(Window.orderBy($"title".asc))) // Window functions https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html
       .select("id", "title", "plot")
       .as[Movie]
-
-
-//  def rowToTransposedTriplet(row: Vector, rowIndex: Long): Array[(Long, (Long, Double))] = {
-//    val indexedRow = row.toArray.zipWithIndex
-//    indexedRow.map{ case (value, colIndex) => (colIndex.toLong, (rowIndex, value)) }
-//  }
-//
-//  def buildRow(rowWithIndexes: Iterable[(Long, Double)]): Vector = {
-//    val resArr = new Array[Double](rowWithIndexes.size)
-//    rowWithIndexes.foreach{ case (index, value) => resArr(index.toInt) = value }
-//    new DenseVector(resArr)
-//  }
-//
-//  def transposeRowMatrix(matrix: RowMatrix): DenseMatrix = {
-//    val numberRows = matrix.rows.count()
-//    val numberCols = matrix.rows.first().size
-//    val transposedRowsRDD = matrix.rows.zipWithIndex.map{ case (row, rowIndex) => rowToTransposedTriplet(row, rowIndex) }
-//      .flatMap(identity(_)) // now we have triplets (newRowIndex, (newColIndex, value))
-//      .groupByKey
-//      .sortByKey().map(_._2) // sort rows and remove row indexes
-//      .map(buildRow) // restore order of elements in each row and remove column indexes
-//    val transposedRowsAsArray = transposedRowsRDD.collect().flatMap(_.toArray)
-//    new DenseMatrix(numberRows.toInt, numberCols, transposedRowsAsArray, isTransposed = true)
-//  }
-
-//  def matrixToRowMatrix(matrix: Matrix): RowMatrix = {
-//    val columns = matrix.toArray.grouped(matrix.numRows)
-//    val rows = columns.toSeq.transpose
-//    val vectors = rows.map(row => new DenseVector(row.toArray))
-//    new RowMatrix(sparkContext.parallelize(vectors))
-//  }
 
   def normaliseMatrix(matrix: DenseMatrix): DenseMatrix = {
     val matrixAsDataFrame = matrix.rowIter.toSeq.map(_.toArray).toDF("unnormalised")
