@@ -26,7 +26,6 @@ object TermDocumentMatrix {
   def apply(pathToIndex: String): TermDocumentMatrix =
     computeTermDocumentMatrix(InvertedIndex(pathToIndex))
 
-//  TODO: refactor this to make it more efficient (create directly a RowMatrix)
   def computeTermDocumentMatrix(invertedIndex: InvertedIndex): TermDocumentMatrix = {
     val numberOfDocuments = invertedIndex.numberOfDocuments
     val matrixEntries = invertedIndex.dictionary.as[(String, Long, Long)].rdd
