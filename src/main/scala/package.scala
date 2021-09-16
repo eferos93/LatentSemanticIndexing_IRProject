@@ -44,34 +44,52 @@ package object project {
       .setInputCol("tokens")
       .setOutputCol("tokensCleaned")
       .transform(dataFrame)
-      .select(extraColumns :+ $"tokensCleaned":_*) // :+ ::= append element to Seq; :_* ::= convert Seq[ColumnName] to ColumnName*
+      .select(extraColumns :+ $"tokensCleaned": _*) // :+ ::= append element to Seq; :_* ::= convert Seq[ColumnName] to ColumnName*
       .withColumnRenamed("tokensCleaned", "tokens")
 
   val tokenize: String => Seq[String] = _.split(" ").filterNot(_.isEmpty).toSeq
 
-  val clean: String => Seq[String] = (normaliseText andThen tokenize)(_)
+  val clean: String => Seq[String] = (normaliseText andThen tokenize) (_)
 
   /**
    * data downloadable from https://github.com/davidsbatista/text-classification/blob/master/movies_genres.csv.bz2
    * function used also to read back the index
    */
-  def readData(filepath: String, delimiter: String = "\t"): DataFrame =
-    sparkSession.read
-      .option("delimiter", delimiter)
-      .option("inferSchema", value = true)
-      .option("header", "true").csv(filepath)
+  def readData(filepath: String,
+               delimiter: String = "\t",
+               columnsToSelect: Option[Seq[ColumnName]] = None): DataFrame = {
+    val data =
+      sparkSession.read
+        .option("delimiter", delimiter)
+        .option("inferSchema", value = true)
+        .option("header", "false").csv(filepath)
+
+    columnsToSelect match {
+      case Some(columns) => data.select(columns:_*)
+      case None => data
+    }
+  }
 
   /**
    * Read the Corpus data
-   * @param filepath path to the corpus
+   *
+   * @param filepathTitles path to the corpus
    * @return The corpus represented as a Dataset[Movie]
    */
-  def readCorpus(filepath: String = "data/movies_genres.csv"): Dataset[Movie] =
-    readData(filepath)
+  def readCorpus(filepathTitles: String = "data/movie.metadata.tsv",
+                 filepathDescriptions: String = "data/plot_summaries.txt"): Dataset[Movie] = {
+    val titles =
+      readData(filepathTitles, columnsToSelect = Option(Seq($"_c0", $"_c2")))
+      .toDF("internalId", "title")
+    val descriptions = readData(filepathDescriptions).toDF("internalId", "plot")
+
+    titles
+      .join(descriptions, titles("internalId") === descriptions("internalId"))
       .select("title", "plot")
       .withColumn("id", row_number.over(Window.orderBy($"title".asc))) // Window functions https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html
       .select("id", "title", "plot")
       .as[Movie]
+  }
 
   def normaliseMatrix(matrix: DenseMatrix): DenseMatrix = {
     val matrixAsDataFrame = matrix.rowIter.toSeq.map(_.toArray).toDF("unnormalised")
