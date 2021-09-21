@@ -20,7 +20,7 @@ class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRo
 }
 
 object TermDocumentMatrix {
-  def apply(corpus: Dataset[Movie]): TermDocumentMatrix =
+  def apply[T <: Document](corpus: Dataset[T]): TermDocumentMatrix =
     computeTermDocumentMatrix(InvertedIndex(corpus))
 
   def apply(pathToIndex: String): TermDocumentMatrix =

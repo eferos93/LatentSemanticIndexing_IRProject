@@ -1,6 +1,6 @@
 package org.ir.project
 
-import data_structures.{Movie, TermDocumentMatrix}
+import data_structures.{Book, Document, TermDocumentMatrix}
 import sparkSession.implicits._
 
 import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Matrix, Vector, Vectors}
@@ -10,7 +10,7 @@ import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.types.{ArrayType, DoubleType, StructField, StructType}
 import org.apache.spark.storage.StorageLevel
 
-class IRSystem(val corpus: Dataset[Movie],
+class IRSystem[T <: Document](val corpus: Dataset[T],
                val vocabulary: Dataset[String],
                val U: DenseMatrix, val sigma: DenseVector, val V: DenseMatrix) extends Serializable {
 
@@ -27,7 +27,7 @@ class IRSystem(val corpus: Dataset[Movie],
     mapQueryVector(queryVector)
   }
 
-  private def answerQuery(textQuery: String, top: Int): Seq[(Movie, Double)] = {
+  private def answerQuery(textQuery: String, top: Int): Seq[(T, Double)] = {
     val queryVector = buildQueryVector(textQuery)
     sparkContext.parallelize(V.rowIter.toSeq).zipWithIndex
       .map { case (vector, documentId) => (documentId, -queryVector.dot(vector)) }
@@ -49,17 +49,17 @@ class IRSystem(val corpus: Dataset[Movie],
 }
 
 object IRSystem {
-  def apply(corpus: Dataset[Movie], k: Int): IRSystem = {
+  def apply[T <: Document](corpus: Dataset[T], k: Int): IRSystem[T] = {
     val termDocumentMatrix = TermDocumentMatrix(corpus)
     initializeIRSystem(corpus, termDocumentMatrix, k)
   }
 
-  def apply(corpus: Dataset[Movie], pathToIndex: String, k: Int): IRSystem = {
+  def apply[T <: Document](corpus: Dataset[T], pathToIndex: String, k: Int): IRSystem[T] = {
     val termDocumentMatrix = TermDocumentMatrix(pathToIndex)
     initializeIRSystem(corpus, termDocumentMatrix, k)
   }
 
-  def apply(corpus: Dataset[Movie], pathToIndex: String, pathToMatrices: String, k: Int) = {
+  def apply(corpus: Dataset[Document], pathToIndex: String, pathToMatrices: String, k: Int) = {
     val U = readMatrix(s"$pathToMatrices/U/part-00000").toDense
 //    val V = readMatrix(s"$pathToMatrices/V/part-00000").toDense.transpose
     U
@@ -74,7 +74,8 @@ object IRSystem {
     Matrices.dense(asRowMatrix.numRows.toInt, asRowMatrix.numCols.toInt, asRowMatrix.rows.flatMap(_.toArray).collect)
   }
 
-  private def initializeIRSystem(corpus: Dataset[Movie], termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem = {
+  private def initializeIRSystem[T <: Document](corpus: Dataset[T],
+                                 termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem[T] = {
     val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
     val U = singularValueDecomposition.U
     val UasDense =

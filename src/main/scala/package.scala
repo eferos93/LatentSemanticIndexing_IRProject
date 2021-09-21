@@ -5,7 +5,7 @@ import org.apache.spark.ml.feature.{Normalizer, StopWordsRemover}
 import org.apache.spark.ml.linalg.{DenseMatrix, Matrices}
 import org.apache.spark.sql._
 import org.apache.spark.{SparkConf, SparkContext}
-import org.ir.project.data_structures.Movie
+import org.ir.project.data_structures.{Book, Document}
 
 
 package object project {
@@ -77,21 +77,21 @@ package object project {
    * @return The corpus represented as a Dataset[Movie]
    */
   def readCorpus(filepathTitles: String = "data/movie.metadata.tsv",
-                 filepathDescriptions: String = "data/plot_summaries.txt"): Dataset[Movie] = {
+                 filepathDescriptions: String = "data/plot_summaries.txt"): Dataset[Book] = {
     val titles =
       readData(filepathTitles, columnsToSelect = Option(Seq($"_c0", $"_c2")))
       .toDF("internalId", "title")
-    val descriptions = readData(filepathDescriptions).toDF("internalId", "plot")
+    val descriptions = readData(filepathDescriptions).toDF("internalId", "description")
 
     titles
       .join(descriptions, titles("internalId") === descriptions("internalId"))
-      .select("title", "plot")
+      .select("title", "description")
       .orderBy("title").rdd
       .zipWithIndex.map { case (row, documentId) => (row.getString(0), row.getString(1), documentId) }
-      .toDF("title", "plot", "id")
+      .toDF("title", "description", "id")
 //      .withColumn("id", row_number.over(Window.orderBy($"title".asc))) // Window functions https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html
-      .select("id", "title", "plot")
-      .as[Movie]
+      .select("id", "title", "description")
+      .as[Book]
   }
 
   def normaliseMatrix(matrix: DenseMatrix): DenseMatrix = {

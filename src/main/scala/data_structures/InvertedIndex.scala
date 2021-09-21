@@ -4,16 +4,16 @@ package data_structures
 import sparkSession.implicits._
 
 import org.apache.spark.sql.functions.sum
-import org.apache.spark.sql.{DataFrame, Dataset, Encoders, SaveMode}
+import org.apache.spark.sql.{DataFrame, Dataset, SaveMode}
 
 class InvertedIndex(val dictionary: DataFrame, val numberOfDocuments: Long)
 
 object InvertedIndex {
-  def apply(corpus: Dataset[Movie]): InvertedIndex = {
+  def apply[T <: Document](corpus: Dataset[T]): InvertedIndex = {
     val dictionary: DataFrame =
       removeStopWords(
         corpus
-          .map(movie => (movie.id, clean(movie.plot)))
+          .map(document => (document.id, clean(document.description)))
           .toDF("documentId", "tokens")
       ).as[(Long, Seq[String])]
         .flatMap { case (documentId, tokens) => tokens.map(term => (term, documentId, 1)) }

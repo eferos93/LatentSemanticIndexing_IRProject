@@ -1,6 +1,6 @@
 package org.ir.project
 package data_structures
 
-case class Movie(id: Long, title: String, plot: String) {
+abstract case class Document(id: Long, title: String, description: String) {
   override def toString: String = title
 }
