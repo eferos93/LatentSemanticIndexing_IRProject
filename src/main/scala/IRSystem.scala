@@ -60,15 +60,17 @@ object IRSystem {
   }
 
   def apply(corpus: Dataset[Movie], pathToIndex: String, pathToMatrices: String, k: Int) = {
-    val U = readMatrix(s"$pathToMatrices/U/part-00000").toDense.transpose
-    val V = readMatrix(s"$pathToMatrices/V/part-00000").toDense.transpose
+    val U = readMatrix(s"$pathToMatrices/U/part-00000").toDense
+//    val V = readMatrix(s"$pathToMatrices/V/part-00000").toDense.transpose
     U
 //    val sigma =
   }
 
-  private def readMatrix(pathToMatrix: String): Matrix = {
+  def readMatrix(pathToMatrix: String): Matrix = {
     val matrixAsRDD = sparkContext.textFile(pathToMatrix).map(line => OldVectors.parse(line))
+//    println(matrixAsRDD.first())
     val asRowMatrix = new RowMatrix(matrixAsRDD)
+    println(asRowMatrix.rows.first().equals(matrixAsRDD.first()))
     Matrices.dense(asRowMatrix.numRows.toInt, asRowMatrix.numCols.toInt, asRowMatrix.rows.flatMap(_.toArray).collect)
   }
 
