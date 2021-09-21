@@ -1,13 +1,12 @@
 package org.ir.project
 
-import data_structures.{Book, Document, TermDocumentMatrix}
+import data_structures.{Document, TermDocumentMatrix}
 import sparkSession.implicits._
 
 import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Matrix, Vector, Vectors}
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.mllib.linalg.{Vectors => OldVectors}
 import org.apache.spark.sql.Dataset
-import org.apache.spark.sql.types.{ArrayType, DoubleType, StructField, StructType}
 import org.apache.spark.storage.StorageLevel
 
 class IRSystem[T <: Document](val corpus: Dataset[T],
