@@ -59,7 +59,7 @@ object IRSystem {
   }
 
   def apply(corpus: Dataset[Document], pathToIndex: String, pathToMatrices: String, k: Int) = {
-    val U = readMatrix(s"$pathToMatrices/U/part-00000").toDense
+    val U = readMatrix(s"$pathToMatrices/U/part-00000")
 //    val V = readMatrix(s"$pathToMatrices/V/part-00000").toDense.transpose
     U
 //    val sigma =
@@ -70,21 +70,31 @@ object IRSystem {
 //    println(matrixAsRDD.first())
     val asRowMatrix = new RowMatrix(matrixAsRDD)
     println(asRowMatrix.rows.first().equals(matrixAsRDD.first()))
-    Matrices.dense(asRowMatrix.numRows.toInt, asRowMatrix.numCols.toInt, asRowMatrix.rows.flatMap(_.toArray).collect)
+    Matrices.dense(
+      asRowMatrix.numRows.toInt,
+      asRowMatrix.numCols.toInt,
+      asRowMatrix.rows.flatMap(_.toArray).collect
+    ).transpose //transposing because Matrices.dense creates a column major matrix
   }
 
   private def initializeIRSystem[T <: Document](corpus: Dataset[T],
                                  termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem[T] = {
     val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
     val U = singularValueDecomposition.U
+    val V = singularValueDecomposition.V
     val UasDense =
-      new DenseMatrix(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.vector.toArray).collect, isTransposed = false)
+      Matrices.dense(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.vector.toArray).collect)
+        .toDense.transpose
+
+    val VAsDense =
+      Matrices.dense(V.numRows, V.numCols, U.rows.flatMap(_.vector.toArray).collect)
+        .toDense.transpose
     val sigma = singularValueDecomposition.s.asML.toDense
 //  normalising is just needed to have scores between 0 and 1, but it won't change the rank
 //    it is kinda expensive as the matrix is big, thus this step is skipped
 //    val V = normaliseMatrix(singularValueDecomposition.V.asML.toDense)
     new IRSystem(corpus.persist(StorageLevel.MEMORY_ONLY_SER),
       termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
-      UasDense, sigma, singularValueDecomposition.V.asML.toDense)
+      UasDense, sigma, VAsDense)
   }
 }
