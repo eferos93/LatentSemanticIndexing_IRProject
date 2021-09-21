@@ -2,8 +2,10 @@ package org.ir
 
 
 import org.apache.spark.ml.feature.{Normalizer, StopWordsRemover}
-import org.apache.spark.ml.linalg.{DenseMatrix, Matrices}
+import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Vector}
+import org.apache.spark.mllib.linalg.{Matrix => OldMat}
 import org.apache.spark.sql._
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ir.project.data_structures.{Book, Document}
 
@@ -105,12 +107,19 @@ package object project {
   }
 
   def normaliseMatrix(matrix: DenseMatrix): DenseMatrix = {
-    val matrixAsDataFrame = matrix.rowIter.toSeq.map(_.toArray).toDF("unnormalised")
+    val matrixAsDataFrame =
+      matrix.rowIter.toSeq.zipWithIndex.toDF("unnormalised", "id").select("unnormalised")
     val normalisedMatrix = new Normalizer()
       .setInputCol("unnormalised")
       .setOutputCol("normalised")
       .transform(matrixAsDataFrame)
       .select("normalised")
-    Matrices.dense(matrix.numRows, matrix.numCols, normalisedMatrix.as[Array[Double]].collect.flatten).toDense
+    Matrices.dense(
+      matrix.numRows,
+      matrix.numCols,
+      // to convert DataFrame to DataSet[Vector] we need to pass a custom encoder
+      normalisedMatrix.as[Vector](ExpressionEncoder(): Encoder[Vector]).flatMap(_.toArray).collect
+    ).toDense.transpose //we need to transpose the matrix as Matrices.dense creates a column major mat
   }
+
 }
