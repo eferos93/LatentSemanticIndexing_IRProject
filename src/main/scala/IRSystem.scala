@@ -4,7 +4,7 @@ import data_structures.{Document, TermDocumentMatrix}
 import sparkSession.implicits._
 
 import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Matrix, Vector, Vectors}
-import org.apache.spark.mllib.linalg.distributed.RowMatrix
+import org.apache.spark.mllib.linalg.distributed.{IndexedRow, IndexedRowMatrix, RowMatrix}
 import org.apache.spark.mllib.linalg.{Vectors => OldVectors}
 import org.apache.spark.sql.Dataset
 import org.apache.spark.storage.StorageLevel
@@ -17,7 +17,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     println("converting to sigma to diag matrix")
     val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
     println("made the conversion")
-    inverseDiagonalSigma.multiply(U).multiply(queryVector)
+    inverseDiagonalSigma.multiply(U.transpose).multiply(queryVector)
   }
 
   private def buildQueryVector(textQuery: String): Vector = {
@@ -72,25 +72,27 @@ object IRSystem {
   }
 
   def readMatrix(pathToMatrix: String): Matrix = {
-    val matrixAsRDD = sparkContext.textFile(pathToMatrix).map(line => OldVectors.parse(line))
+    val matrixAsRDD = sparkContext.textFile(pathToMatrix).zipWithIndex
+      .map { case (line, index) => IndexedRow(index, OldVectors.parse(line)) }
 //    println(matrixAsRDD.first())
-    val asRowMatrix = new RowMatrix(matrixAsRDD)
 //    println(asRowMatrix.rows.first().equals(matrixAsRDD.first()))
-    Matrices.dense(
-      asRowMatrix.numRows.toInt,
-      asRowMatrix.numCols.toInt,
-      asRowMatrix.rows.flatMap(_.toArray).collect
-    ).transpose //transposing because Matrices.dense creates a column major matrix
+//    Matrices.dense(
+//      asRowMatrix.numRows.toInt,
+//      asRowMatrix.numCols.toInt,
+//      asRowMatrix.rows.flatMap(_.toArray).collect
+//    ).transpose //transposing because Matrices.dense creates a column major matrix
+    new IndexedRowMatrix(matrixAsRDD, matrixAsRDD.count, matrixAsRDD.first().vector.size)
+      .toBlockMatrix().toLocalMatrix().asML.toDense
   }
 
   private def initializeIRSystem[T <: Document](corpus: Dataset[T],
                                  termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem[T] = {
     val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
-    val U = singularValueDecomposition.U
+    val UasDense = singularValueDecomposition.U.toBlockMatrix().toLocalMatrix().asML.toDense
     val V = singularValueDecomposition.V
-    val UasDense =
-      Matrices.dense(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.vector.toArray).collect)
-        .toDense.transpose
+//    val UasDense =
+//      Matrices.dense(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.vector.toArray).collect)
+//        .toDense.transpose
 
 //    val VAsDense =
 //      Matrices.dense(V.numRows, V.numCols, V.rowIter.flatMap(_.toArray).toArray)
