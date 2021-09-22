@@ -14,9 +14,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
                val U: DenseMatrix, val sigma: DenseVector, val V: DenseMatrix) extends Serializable {
 
   private def mapQueryVector(queryVector: Vector): DenseVector = {
-    println("converting to sigma to diag matrix")
     val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
-    println("made the conversion")
     inverseDiagonalSigma.multiply(U.transpose).multiply(queryVector)
   }
 
@@ -24,9 +22,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     val tokens = removeStopWords(
       List(clean(textQuery)).toDF("tokens"), extraColumns = Seq.empty
     ).first().getAs[Seq[String]](0)
-    println("here")
     val queryVector = Vectors.dense(vocabulary.map(word => tokens.count(_ == word).toDouble).collect)
-    println("made it the collect")
     mapQueryVector(queryVector)
   }
 
@@ -82,13 +78,13 @@ object IRSystem {
 //      asRowMatrix.rows.flatMap(_.toArray).collect
 //    ).transpose //transposing because Matrices.dense creates a column major matrix
     new IndexedRowMatrix(matrixAsRDD, matrixAsRDD.count, matrixAsRDD.first().vector.size)
-      .toBlockMatrix().toLocalMatrix().asML.toDense
+      .toBlockMatrix().toLocalMatrix().asML.toDenseRowMajor
   }
 
   private def initializeIRSystem[T <: Document](corpus: Dataset[T],
                                  termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem[T] = {
     val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
-    val UasDense = singularValueDecomposition.U.toBlockMatrix().toLocalMatrix().asML.toDense
+    val UasDense = singularValueDecomposition.U.toBlockMatrix().toLocalMatrix().asML.toDenseRowMajor
     val V = singularValueDecomposition.V
 //    val UasDense =
 //      Matrices.dense(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.vector.toArray).collect)
@@ -97,7 +93,7 @@ object IRSystem {
 //    val VAsDense =
 //      Matrices.dense(V.numRows, V.numCols, V.rowIter.flatMap(_.toArray).toArray)
 //        .toDense.transpose
-    val VAsDense = V.asML.toDense
+    val VAsDense = V.asML.toDenseRowMajor
     val sigma = singularValueDecomposition.s.asML.toDense
 //  normalising is just needed to have scores between 0 and 1, but it won't change the rank
 //    it is kinda expensive as the matrix is big, thus this step is skipped
