@@ -26,10 +26,13 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     mapQueryVector(queryVector)
   }
 
+  private def computeCosineSimilarity(firstVector: Vector, secondVector: Vector): Double =
+    firstVector.dot(secondVector) / (Vectors.norm(firstVector, 2.0) * Vectors.norm(secondVector, 2.0))
+
   private def answerQuery(textQuery: String, top: Int): Seq[(T, Double)] = {
     val queryVector = buildQueryVector(textQuery)
     sparkContext.parallelize(V.rowIter.toSeq).zipWithIndex
-      .map { case (vector, documentId) => (documentId, -(queryVector.dot(vector)/(queryVector.size * vector.size))) }
+      .map { case (vector, documentId) => (documentId, -computeCosineSimilarity(queryVector, vector)) }
       .sortBy(_._2, ascending = false) // descending sorting
       .take(top)
       .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score)}
