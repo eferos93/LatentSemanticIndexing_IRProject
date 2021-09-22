@@ -41,7 +41,7 @@ object TermDocumentMatrix {
               MatrixEntry(
                 termIndex,
                 documentId,
-                termFrequency * log(numberOfDocuments.toDouble / documentFrequency.toDouble)
+                termFrequency * log(numberOfDocuments.toDouble / documentFrequency)
               )
           }
       }
