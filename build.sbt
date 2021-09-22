@@ -25,4 +25,3 @@ libraryDependencies  ++= Seq(
 )
 //error importing the stemming library, looks like it doesn't support scala 2.12
 //which is mandatory version for spark
-//libraryDependencies += "com.github.master" %% "spark-stemming" % "0.2.1"

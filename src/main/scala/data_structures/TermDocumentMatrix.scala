@@ -26,7 +26,7 @@ object TermDocumentMatrix {
   def apply(pathToIndex: String): TermDocumentMatrix =
     computeTermDocumentMatrix(InvertedIndex(pathToIndex))
 
-  def computeTermDocumentMatrix(invertedIndex: InvertedIndex): TermDocumentMatrix = {
+  private def computeTermDocumentMatrix(invertedIndex: InvertedIndex): TermDocumentMatrix = {
     val numberOfDocuments = invertedIndex.numberOfDocuments
     val matrixEntries = invertedIndex.dictionary
       .as[(String, Long, Long)].rdd // (term, docId, termFrequency)
@@ -38,7 +38,11 @@ object TermDocumentMatrix {
           val documentFrequency = docIdsAndFrequencies.toSeq.length
           docIdsAndFrequencies.map {
             case (_, documentId, termFrequency) =>
-              MatrixEntry(termIndex, documentId, termFrequency * log(numberOfDocuments / documentFrequency))
+              MatrixEntry(
+                termIndex,
+                documentId,
+                termFrequency * log(numberOfDocuments.toDouble / documentFrequency.toDouble)
+              )
           }
       }
     new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries).toIndexedRowMatrix)

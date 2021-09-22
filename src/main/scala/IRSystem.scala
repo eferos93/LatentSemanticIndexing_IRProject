@@ -33,9 +33,9 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     val queryVector = buildQueryVector(textQuery)
     sparkContext.parallelize(V.rowIter.toSeq).zipWithIndex
       .map { case (vector, documentId) => (documentId, -computeCosineSimilarity(queryVector, vector)) }
-      .sortBy(_._2, ascending = false) // descending sorting
+      .sortBy(_._2, ascending = false) // descending sort
       .take(top)
-      .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score)}
+      .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score) }
   }
 
   def query(query: String, top: Int = 5): Unit =
@@ -63,16 +63,15 @@ object IRSystem {
 
   def apply(corpus: Dataset[Document], pathToIndex: String, pathToMatrices: String, k: Int) = {
     val U = readMatrix(s"$pathToMatrices/U/part-00000")
-//    val V = readMatrix(s"$pathToMatrices/V/part-00000").toDense.transpose
-    U
-//    val sigma =
+    val V = readMatrix(s"$pathToMatrices/V/part-00000")
+
   }
 
   def readMatrix(pathToMatrix: String): Matrix = {
     val matrixAsRDD = sparkContext.textFile(pathToMatrix).map(line => OldVectors.parse(line))
 //    println(matrixAsRDD.first())
     val asRowMatrix = new RowMatrix(matrixAsRDD)
-    println(asRowMatrix.rows.first().equals(matrixAsRDD.first()))
+//    println(asRowMatrix.rows.first().equals(matrixAsRDD.first()))
     Matrices.dense(
       asRowMatrix.numRows.toInt,
       asRowMatrix.numCols.toInt,
