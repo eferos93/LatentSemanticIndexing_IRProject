@@ -88,9 +88,10 @@ object IRSystem {
       Matrices.dense(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.vector.toArray).collect)
         .toDense.transpose
 
-    val VAsDense =
-      Matrices.dense(V.numRows, V.numCols, U.rows.flatMap(_.vector.toArray).collect)
-        .toDense.transpose
+//    val VAsDense =
+//      Matrices.dense(V.numRows, V.numCols, V.rowIter.flatMap(_.toArray).toArray)
+//        .toDense.transpose
+    val VAsDense = V.asML.toDense
     val sigma = singularValueDecomposition.s.asML.toDense
 //  normalising is just needed to have scores between 0 and 1, but it won't change the rank
 //    it is kinda expensive as the matrix is big, thus this step is skipped
