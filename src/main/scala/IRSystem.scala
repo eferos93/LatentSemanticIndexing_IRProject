@@ -15,7 +15,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 
   private def mapQueryVector(queryVector: Vector): DenseVector = {
     val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
-    inverseDiagonalSigma.multiply(U.transpose).multiply(queryVector)
+    inverseDiagonalSigma.multiply(U).multiply(queryVector)
   }
 
   private def buildQueryVector(textQuery: String): Vector = {
