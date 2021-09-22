@@ -14,7 +14,9 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
                val U: DenseMatrix, val sigma: DenseVector, val V: DenseMatrix) extends Serializable {
 
   private def mapQueryVector(queryVector: Vector): DenseVector = {
+    println("converting to sigma to diag matrix")
     val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
+    println("made the conversion")
     inverseDiagonalSigma.multiply(U).multiply(queryVector)
   }
 
@@ -22,7 +24,9 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     val tokens = removeStopWords(
       List(clean(textQuery)).toDF("tokens"), extraColumns = Seq.empty
     ).first().getAs[Seq[String]](0)
+    println("here")
     val queryVector = Vectors.dense(vocabulary.map(word => tokens.count(_ == word).toDouble).collect)
+    println("made it the collect")
     mapQueryVector(queryVector)
   }
 
