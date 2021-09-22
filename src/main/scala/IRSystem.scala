@@ -29,7 +29,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
   private def answerQuery(textQuery: String, top: Int): Seq[(T, Double)] = {
     val queryVector = buildQueryVector(textQuery)
     sparkContext.parallelize(V.rowIter.toSeq).zipWithIndex
-      .map { case (vector, documentId) => (documentId, -queryVector.dot(vector)) }
+      .map { case (vector, documentId) => (documentId, -(queryVector.dot(vector)/(queryVector.size * vector.size))) }
       .sortBy(_._2, ascending = false) // descending sorting
       .take(top)
       .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score)}
