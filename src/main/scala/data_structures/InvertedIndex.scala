@@ -20,8 +20,11 @@ object InvertedIndex {
         .toDF("term", "documentId", "count")
         .groupBy("term", "documentId") // groupBy together with agg, is a relational style aggregation
         .agg(sum("count").as("termFrequency"))
+
     dictionary.repartition(1)
-      .write.mode(SaveMode.Ignore).option("delimiter", ",").option("header", "true").csv("dictionary/")
+      .write.mode(SaveMode.Ignore)
+      .option("delimiter", ",").option("header", "true")
+      .csv(s"dictionary/")
     new InvertedIndex(dictionary, corpus.count)
   }
 

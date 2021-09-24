@@ -5,17 +5,18 @@ import sparkSession.implicits._
 
 import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Matrix, Vector, Vectors}
 import org.apache.spark.mllib.linalg.distributed.{IndexedRow, IndexedRowMatrix, RowMatrix}
-import org.apache.spark.mllib.linalg.{Vectors => OldVectors}
+import org.apache.spark.mllib.linalg.{Vectors => OldVectors, Matrices => OldMatrices}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
 import org.apache.spark.storage.StorageLevel
 
 class IRSystem[T <: Document](val corpus: Dataset[T],
                val vocabulary: Dataset[String],
-               val U: DenseMatrix, val sigma: DenseVector, val V: DenseMatrix) extends Serializable {
+               val U: DenseMatrix, val sigma: Matrix, val V: RDD[(Vector, Long)]) extends Serializable {
 
   private def mapQueryVector(queryVector: Vector): DenseVector = {
-    val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
-    inverseDiagonalSigma.multiply(U.transpose).multiply(queryVector)
+//    val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
+    sigma.multiply(U.transpose).multiply(queryVector)
   }
 
   private def buildQueryVector(textQuery: String): Vector = {
@@ -31,7 +32,8 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 
   private def answerQuery(textQuery: String, top: Int): Seq[(T, Double)] = {
     val queryVector = buildQueryVector(textQuery)
-    sparkContext.parallelize(V.rowIter.toSeq).zipWithIndex
+//    sparkContext.parallelize(V.rowIter.toSeq).zipWithIndex
+    V
       .map { case (vector, documentId) => (documentId, -computeCosineSimilarity(queryVector, vector)) }
       .sortBy(_._2, ascending = false) // descending sort
       .take(top)
@@ -43,7 +45,8 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 
   def saveIrSystem(): Unit = {
     sparkContext.parallelize(U.rowIter.toSeq, numSlices = 1).saveAsTextFile("matrices/U")
-    sparkContext.parallelize(V.rowIter.toSeq, numSlices = 1).saveAsTextFile("matrices/V")
+//    sparkContext.parallelize(V.rowIter.toSeq, numSlices = 1).saveAsTextFile("matrices/V")
+    V.map(_._1).repartition(1).saveAsTextFile("matrices/V")
     sparkContext.parallelize(Seq(sigma), numSlices = 1).saveAsTextFile("matrices/s")
   }
 
@@ -76,15 +79,18 @@ object IRSystem {
 //      asRowMatrix.numRows.toInt,
 //      asRowMatrix.numCols.toInt,
 //      asRowMatrix.rows.flatMap(_.toArray).collect
-//    ).transpose //transposing because Matrices.dense creates a column major matrix
+//    ).transpse //transposing because Matrices.dense creates a column major matrix
+//    val block = new IndexedRowMatrix(matrixAsRDD, matrixAsRDD.count, matrixAsRDD.first().vector.size)
+//      .toBlockMatrix()
+//    OldMatrices.dense()
     new IndexedRowMatrix(matrixAsRDD, matrixAsRDD.count, matrixAsRDD.first().vector.size)
-      .toBlockMatrix().toLocalMatrix().asML.toDenseRowMajor
+      .toBlockMatrix().toLocalMatrix().asML.toDense
   }
 
   private def initializeIRSystem[T <: Document](corpus: Dataset[T],
                                  termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem[T] = {
     val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
-    val UasDense = singularValueDecomposition.U.toBlockMatrix().toLocalMatrix().asML.toDenseRowMajor
+    val UasDense = singularValueDecomposition.U.toBlockMatrix().toLocalMatrix().asML.toDense
     val V = singularValueDecomposition.V
 //    val UasDense =
 //      Matrices.dense(U.numRows.toInt, U.numCols.toInt, U.rows.flatMap(_.vector.toArray).collect)
@@ -93,8 +99,9 @@ object IRSystem {
 //    val VAsDense =
 //      Matrices.dense(V.numRows, V.numCols, V.rowIter.flatMap(_.toArray).toArray)
 //        .toDense.transpose
-    val VAsDense = V.asML.toDenseRowMajor
-    val sigma = singularValueDecomposition.s.asML.toDense
+//    val VAsDense = V.asML.toDenseRowMajor
+    val VAsDense = sparkContext.parallelize(V.asML.rowIter.toSeq).zipWithIndex.persist(StorageLevel.MEMORY_ONLY_SER)
+    val sigma = Matrices.diag(new DenseVector(singularValueDecomposition.s.toArray.map(1/_)))
 //  normalising is just needed to have scores between 0 and 1, but it won't change the rank
 //    it is kinda expensive as the matrix is big, thus this step is skipped
 //    val V = normaliseMatrix(singularValueDecomposition.V.asML.toDense)

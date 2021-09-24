@@ -7,7 +7,7 @@ import org.apache.spark.mllib.linalg.{Matrix => OldMat}
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.{SparkConf, SparkContext}
-import org.ir.project.data_structures.{Book, Document}
+import org.ir.project.data_structures.{Book, Document, Movie}
 
 
 package object project {
@@ -72,29 +72,29 @@ package object project {
     }
   }
 
-//  /**
-//   * Read the Corpus data
-//   *
-//   * @param filepathTitles path to the corpus
-//   * @return The corpus represented as a Dataset[Movie]
-//   */
-//  def readCorpus(filepathTitles: String = "data/movie.metadata.tsv",
-//                 filepathDescriptions: String = "data/plot_summaries.txt"): Dataset[Book] = {
-//    val titles =
-//      readData(filepathTitles, columnsToSelect = Option(Seq($"_c0", $"_c2")))
-//      .toDF("internalId", "title")
-//    val descriptions = readData(filepathDescriptions).toDF("internalId", "description")
-//
-//    titles
-//      .join(descriptions, titles("internalId") === descriptions("internalId"))
-//      .select("title", "description")
-//      .orderBy("title").rdd
-//      .zipWithIndex.map { case (row, documentId) => (row.getString(0), row.getString(1), documentId) }
-//      .toDF("title", "description", "id")
-////      .withColumn("id", row_number.over(Window.orderBy($"title".asc))) // Window functions https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html
-//      .select("id", "title", "description")
-//      .as[Book]
-//  }
+  /**
+   * Read the Corpus data
+   *
+   * @param filepathTitles path to the corpus
+   * @return The corpus represented as a Dataset[Movie]
+   */
+  def readMovieCorpus(filepathTitles: String = "data/movie.metadata.tsv",
+                      filepathDescriptions: String = "data/plot_summaries.txt"): Dataset[Movie] = {
+    val titles =
+      readData(filepathTitles, columnsToSelect = Option(Seq($"_c0", $"_c2")))
+      .toDF("internalId", "title")
+    val descriptions = readData(filepathDescriptions).toDF("internalId", "description")
+
+    titles
+      .join(descriptions, titles("internalId") === descriptions("internalId"))
+      .select("title", "description")
+      .orderBy("title").rdd
+      .zipWithIndex.map { case (row, documentId) => (row.getString(0), row.getString(1), documentId) }
+      .toDF("title", "description", "id")
+//      .withColumn("id", row_number.over(Window.orderBy($"title".asc))) // Window functions https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html
+      .select("id", "title", "description")
+      .as[Movie]
+  }
 
   def readBooksCorpus(path: String = "data/booksummaries.txt"): Dataset[Book] = {
     readData(path, columnsToSelect = Option(Seq($"_c2", $"_c3", $"_c6")))

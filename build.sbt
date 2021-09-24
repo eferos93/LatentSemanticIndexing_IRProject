@@ -23,5 +23,9 @@ libraryDependencies  ++= Seq(
   // It depends on LGPL code
   "org.scalanlp" %% "breeze-viz" % "1.3"
 )
+
+
+libraryDependencies += "com.github.fommil.netlib" % "all" % "1.1.2"
+
 //error importing the stemming library, looks like it doesn't support scala 2.12
 //which is mandatory version for spark
