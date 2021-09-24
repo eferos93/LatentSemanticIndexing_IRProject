@@ -4,8 +4,8 @@ import data_structures.{Document, TermDocumentMatrix}
 import sparkSession.implicits._
 
 import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Matrix, Vector, Vectors}
-import org.apache.spark.mllib.linalg.distributed.{IndexedRow, IndexedRowMatrix, RowMatrix}
-import org.apache.spark.mllib.linalg.{Vectors => OldVectors, Matrices => OldMatrices}
+import org.apache.spark.mllib.linalg.distributed.{IndexedRow, IndexedRowMatrix}
+import org.apache.spark.mllib.linalg.{Vectors => OldVectors}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
 import org.apache.spark.storage.StorageLevel
@@ -14,27 +14,23 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
                val vocabulary: Dataset[String],
                val U: DenseMatrix, val sigma: Matrix, val V: RDD[(Vector, Long)]) extends Serializable {
 
-  private def mapQueryVector(queryVector: Vector): DenseVector = {
-//    val inverseDiagonalSigma = Matrices.diag(new DenseVector(sigma.toArray.map(math.pow(_, -1))))
+  def mapQueryVector(queryVector: Vector): DenseVector =
     sigma.multiply(U.transpose).multiply(queryVector)
-  }
 
-  private def buildQueryVector(textQuery: String): Vector = {
+  def buildQueryVector(textQuery: String): Vector = {
     val tokens = removeStopWords(
       List(clean(textQuery)).toDF("tokens"), extraColumns = Seq.empty
     ).first().getAs[Seq[String]](0)
-    val queryVector = Vectors.dense(vocabulary.map(word => tokens.count(_ == word).toDouble).collect)
+    val queryVector = Vectors.dense(vocabulary.map(word => tokens.count(_.equals(word)).toDouble).collect)
     mapQueryVector(queryVector)
   }
 
-  private def computeCosineSimilarity(firstVector: Vector, secondVector: Vector): Double =
+  def computeCosineSimilarity(firstVector: Vector, secondVector: Vector): Double =
     firstVector.dot(secondVector) / (Vectors.norm(firstVector, 2.0) * Vectors.norm(secondVector, 2.0))
 
-  private def answerQuery(textQuery: String, top: Int): Seq[(T, Double)] = {
+  def answerQuery(textQuery: String, top: Int): Seq[(T, Double)] = {
     val queryVector = buildQueryVector(textQuery)
-//    sparkContext.parallelize(V.rowIter.toSeq).zipWithIndex
-    V
-      .map { case (vector, documentId) => (documentId, -computeCosineSimilarity(queryVector, vector)) }
+    V.map { case (documentVector, documentId) => (documentId, -computeCosineSimilarity(queryVector, documentVector)) }
       .sortBy(_._2, ascending = false) // descending sort
       .take(top)
       .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score) }
@@ -45,7 +41,6 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 
   def saveIrSystem(): Unit = {
     sparkContext.parallelize(U.rowIter.toSeq, numSlices = 1).saveAsTextFile("matrices/U")
-//    sparkContext.parallelize(V.rowIter.toSeq, numSlices = 1).saveAsTextFile("matrices/V")
     V.map(_._1).repartition(1).saveAsTextFile("matrices/V")
     sparkContext.parallelize(Seq(sigma), numSlices = 1).saveAsTextFile("matrices/s")
   }
@@ -87,7 +82,7 @@ object IRSystem {
       .toBlockMatrix().toLocalMatrix().asML.toDense
   }
 
-  private def initializeIRSystem[T <: Document](corpus: Dataset[T],
+  def initializeIRSystem[T <: Document](corpus: Dataset[T],
                                  termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem[T] = {
     val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
     val UasDense = singularValueDecomposition.U.toBlockMatrix().toLocalMatrix().asML.toDense

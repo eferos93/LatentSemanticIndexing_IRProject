@@ -89,10 +89,9 @@ package object project {
       .join(descriptions, titles("internalId") === descriptions("internalId"))
       .select("title", "description")
       .orderBy("title").rdd
-      .zipWithIndex.map { case (row, documentId) => (row.getString(0), row.getString(1), documentId) }
-      .toDF("title", "description", "id")
+      .zipWithIndex.map { case (row, documentId) => (documentId, row.getString(0), row.getString(1)) }
+      .toDF("id", "title", "description")
 //      .withColumn("id", row_number.over(Window.orderBy($"title".asc))) // Window functions https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html
-      .select("id", "title", "description")
       .as[Movie]
   }
 
