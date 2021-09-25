@@ -19,6 +19,7 @@ class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRo
   def getVocabulary: Dataset[String] = invertedIndex.dictionary.select("term").distinct.as[String]
 }
 
+// TODO: generalise this class in order to accept a Weighting function
 object TermDocumentMatrix {
   def apply[T <: Document](corpus: Dataset[T]): TermDocumentMatrix =
     computeTermDocumentMatrix(InvertedIndex(corpus))
