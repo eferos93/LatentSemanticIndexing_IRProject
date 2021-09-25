@@ -1,13 +1,11 @@
 package org.ir
 
 
-import org.apache.spark.ml.feature.{Normalizer, StopWordsRemover}
-import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Vector}
-import org.apache.spark.mllib.linalg.{Matrix => OldMat}
+import org.apache.spark.ml.feature.StopWordsRemover
 import org.apache.spark.sql._
-import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
+import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkConf, SparkContext}
-import org.ir.project.data_structures.{Book, Document, Movie}
+import org.ir.project.data_structures.{Book, Movie}
 
 
 package object project {
@@ -92,7 +90,7 @@ package object project {
       .zipWithIndex.map { case (row, documentId) => (documentId, row.getString(0), row.getString(1)) }
       .toDF("id", "title", "description")
 //      .withColumn("id", row_number.over(Window.orderBy($"title".asc))) // Window functions https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html
-      .as[Movie]
+      .as[Movie].persist(StorageLevel.MEMORY_ONLY_SER)
   }
 
   def readBooksCorpus(path: String = "data/booksummaries.txt"): Dataset[Book] = {
@@ -102,23 +100,6 @@ package object project {
       .rdd.zipWithIndex
       .map { case (row, documentId) => (documentId, row.getString(0), row.getString(1), row.getString(2)) }
       .toDF("id", "title", "author", "description")
-      .as[Book]
+      .as[Book].persist(StorageLevel.MEMORY_ONLY_SER)
   }
-
-  def normaliseMatrix(matrix: DenseMatrix): DenseMatrix = {
-    val matrixAsDataFrame =
-      matrix.rowIter.toSeq.zipWithIndex.toDF("unnormalised", "id").select("unnormalised")
-    val normalisedMatrix = new Normalizer()
-      .setInputCol("unnormalised")
-      .setOutputCol("normalised")
-      .transform(matrixAsDataFrame)
-      .select("normalised")
-    Matrices.dense(
-      matrix.numRows,
-      matrix.numCols,
-      // to convert DataFrame to DataSet[Vector] we need to pass a custom encoder
-      normalisedMatrix.as[Vector](ExpressionEncoder(): Encoder[Vector]).flatMap(_.toArray).collect
-    ).toDense.transpose //we need to transpose the matrix as Matrices.dense creates a column major mat
-  }
-
 }

@@ -5,6 +5,7 @@ import sparkSession.implicits._
 
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.{DataFrame, Dataset, SaveMode}
+import org.apache.spark.storage.StorageLevel
 
 class InvertedIndex(val dictionary: DataFrame, val numberOfDocuments: Long)
 
@@ -25,7 +26,7 @@ object InvertedIndex {
       .write.mode(SaveMode.Ignore)
       .option("delimiter", ",").option("header", "true")
       .csv(s"dictionary/")
-    new InvertedIndex(dictionary, corpus.count)
+    new InvertedIndex(dictionary.persist(StorageLevel.MEMORY_ONLY_SER), corpus.count)
   }
 
   def apply(pathToDictionary: String): InvertedIndex = {
