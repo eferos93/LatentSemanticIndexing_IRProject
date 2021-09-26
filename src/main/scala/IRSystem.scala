@@ -49,7 +49,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 }
 
 object IRSystem {
-  def apply[T <: Document](corpus: Dataset[T], numberOfSingularValues: Int, tfidf: Boolean = true): IRSystem[T] = {
+  def apply[T <: Document](corpus: Dataset[T], numberOfSingularValues: Int, tfidf: Boolean): IRSystem[T] = {
     val termDocumentMatrix = TermDocumentMatrix(corpus, tfidf)
     initializeIRSystem(corpus, termDocumentMatrix, numberOfSingularValues)
   }
@@ -57,7 +57,7 @@ object IRSystem {
   def apply[T <: Document](corpus: Dataset[T],
                            pathToIndex: String,
                            numberOfSingularValues: Int,
-                           tfidf: Boolean = true): IRSystem[T] = {
+                           tfidf: Boolean): IRSystem[T] = {
     val termDocumentMatrix = TermDocumentMatrix(pathToIndex, tfidf)
     initializeIRSystem(corpus, termDocumentMatrix, numberOfSingularValues)
   }

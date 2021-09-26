@@ -62,7 +62,7 @@ object TermDocumentMatrix {
           val documentFrequency = docIdsAndFrequencies.toSeq.length
           docIdsAndFrequencies.map {
             case (_, documentId, termFrequency) =>
-              val args = Map(
+              val args = Map[String, Long](
                 "termFrequency" -> termFrequency,
                 "numberOfDocuments" -> numberOfDocuments,
                 "documentFrequency" -> documentFrequency
