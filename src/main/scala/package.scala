@@ -14,7 +14,6 @@ package object project {
     .setAppName("Latent Semantic Indexing")
     .setMaster("local[*]")
     .set("spark.cores.max", Runtime.getRuntime.availableProcessors.toString)
-//    .set("spark.driver.memory", "3g")
 
   lazy val sparkSession: SparkSession = SparkSession.builder.config(sparkConfiguration).getOrCreate()
   lazy val sparkContext: SparkContext = sparkSession.sparkContext
@@ -36,7 +35,7 @@ package object project {
     //    - ^\\w : not a word
     //    - ^\\s : not a  space
     //    - ^- : not a -
-    text.replaceAll("[^\\w^\\s^-]", "").toLowerCase()
+    text.replaceAll("[^\\w^\\s^-]", "").toLowerCase
 
   def removeStopWords(dataFrame: DataFrame, extraColumns: Seq[ColumnName] = Seq($"documentId")): DataFrame =
     new StopWordsRemover()
@@ -89,7 +88,6 @@ package object project {
       .orderBy("title").rdd
       .zipWithIndex.map { case (row, documentId) => (documentId, row.getString(0), row.getString(1)) }
       .toDF("id", "title", "description")
-//      .withColumn("id", row_number.over(Window.orderBy($"title".asc))) // Window functions https://databricks.com/blog/2015/07/15/introducing-window-functions-in-spark-sql.html
       .as[Movie].persist(StorageLevel.MEMORY_ONLY_SER)
   }
 

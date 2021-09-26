@@ -12,6 +12,21 @@ import org.apache.spark.sql.Dataset
 
 import scala.math.log
 
+trait WordWeight {
+  def weight(args: Map[String, Long]): Double
+}
+
+case class TfIdfWeighting() extends WordWeight {
+  override def weight(args: Map[String, Long]): Double = {
+    args("termFrequency") * log(args("numberOfDocuments").toDouble / args("documentFrequency"))
+  }
+}
+
+case class TermFrequencyWeighting() extends WordWeight {
+  override def weight(args: Map[String, Long]): Double =
+    args("termFrequency")
+}
+
 class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRowMatrix) {
   def computeSVD(numberOfSingularValues: Int): SingularValueDecomposition[IndexedRowMatrix, Matrix] =
     matrix.computeSVD(numberOfSingularValues, computeU = true)
@@ -21,17 +36,25 @@ class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRo
 
 // TODO: generalise this class in order to accept a Weighting function
 object TermDocumentMatrix {
-  def apply[T <: Document](corpus: Dataset[T]): TermDocumentMatrix =
-    computeTermDocumentMatrix(InvertedIndex(corpus))
+  def apply[T <: Document](corpus: Dataset[T], tfidf: Boolean): TermDocumentMatrix = 
+    computeTermDocumentMatrix(InvertedIndex(corpus), getWeigher(tfidf))
 
-  def apply(pathToIndex: String): TermDocumentMatrix =
-    computeTermDocumentMatrix(InvertedIndex(pathToIndex))
+  def apply(pathToIndex: String, tfidf: Boolean): TermDocumentMatrix =
+    computeTermDocumentMatrix(InvertedIndex(pathToIndex), getWeigher(tfidf))
 
-  private def computeTermDocumentMatrix(invertedIndex: InvertedIndex): TermDocumentMatrix = {
+  def getWeigher(tfidf: Boolean): WordWeight = {
+    if (tfidf) {
+      TfIdfWeighting()
+    } else {
+      TermFrequencyWeighting()
+    }
+  }
+  private def computeTermDocumentMatrix[T <: WordWeight](invertedIndex: InvertedIndex,
+                                                         wordWeight: WordWeight): TermDocumentMatrix = {
     val numberOfDocuments = invertedIndex.numberOfDocuments
     val matrixEntries = invertedIndex.dictionary
       .as[(String, Long, Long)].rdd // (term, docId, termFrequency)
-      .groupBy(_._1) //group by term
+      .groupBy(_._1) // group by term
       .sortByKey() // sort by term, as ordering might be lost with grouping
       .zipWithIndex // add term index
       .flatMap {
@@ -39,10 +62,16 @@ object TermDocumentMatrix {
           val documentFrequency = docIdsAndFrequencies.toSeq.length
           docIdsAndFrequencies.map {
             case (_, documentId, termFrequency) =>
+              val args = Map(
+                "termFrequency" -> termFrequency,
+                "numberOfDocuments" -> numberOfDocuments,
+                "documentFrequency" -> documentFrequency
+              )
               MatrixEntry(
                 termIndex,
                 documentId,
-                termFrequency * log(numberOfDocuments.toDouble / documentFrequency)
+//                termFrequency * log(numberOfDocuments.toDouble / documentFrequency)
+                wordWeight.weight(args)
               )
           }
       }

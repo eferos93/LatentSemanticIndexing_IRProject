@@ -49,20 +49,22 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 }
 
 object IRSystem {
-  def apply[T <: Document](corpus: Dataset[T], numberOfSingularValues: Int): IRSystem[T] = {
-    val termDocumentMatrix = TermDocumentMatrix(corpus)
+  def apply[T <: Document](corpus: Dataset[T], numberOfSingularValues: Int, tfidf: Boolean = true): IRSystem[T] = {
+    val termDocumentMatrix = TermDocumentMatrix(corpus, tfidf)
     initializeIRSystem(corpus, termDocumentMatrix, numberOfSingularValues)
   }
 
-  def apply[T <: Document](corpus: Dataset[T], pathToIndex: String, numberOfSingularValues: Int): IRSystem[T] = {
-    val termDocumentMatrix = TermDocumentMatrix(pathToIndex)
+  def apply[T <: Document](corpus: Dataset[T],
+                           pathToIndex: String,
+                           numberOfSingularValues: Int,
+                           tfidf: Boolean = true): IRSystem[T] = {
+    val termDocumentMatrix = TermDocumentMatrix(pathToIndex, tfidf)
     initializeIRSystem(corpus, termDocumentMatrix, numberOfSingularValues)
   }
 
   def apply(corpus: Dataset[Document], pathToIndex: String, pathToMatrices: String, numberOfSingularValues: Int) = {
     val U = readMatrix(s"$pathToMatrices/U/part-00000")
     val V = readMatrix(s"$pathToMatrices/V/part-00000")
-
   }
 
   def readMatrix(pathToMatrix: String): Matrix = {
@@ -77,7 +79,8 @@ object IRSystem {
                                         numberOfSingularValues: Int): IRSystem[T] = {
     val singularValueDecomposition = termDocumentMatrix.computeSVD(numberOfSingularValues)
     val UasDense = singularValueDecomposition.U.toBlockMatrix.toLocalMatrix.asML.toDense
-    val VAsDense = sparkContext.parallelize(singularValueDecomposition.V.asML.rowIter.toSeq).zipWithIndex.persist(StorageLevel.MEMORY_ONLY_SER)
+    val VAsDense = sparkContext.parallelize(singularValueDecomposition.V.asML.rowIter.toSeq)
+      .zipWithIndex.persist(StorageLevel.MEMORY_ONLY_SER)
     val sigma = Matrices.diag(new DenseVector(singularValueDecomposition.s.toArray.map(1/_)))
     new IRSystem(corpus.persist(StorageLevel.MEMORY_ONLY_SER),
       termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
