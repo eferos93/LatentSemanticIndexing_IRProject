@@ -11,8 +11,8 @@ import org.apache.spark.sql.Dataset
 import org.apache.spark.storage.StorageLevel
 
 class IRSystem[T <: Document](val corpus: Dataset[T],
-               val vocabulary: Dataset[String],
-               val U: DenseMatrix, val sigma: Matrix, val V: RDD[(Vector, Long)]) extends Serializable {
+                              val vocabulary: Dataset[String],
+                              val U: DenseMatrix, val sigma: Matrix, val V: RDD[(Vector, Long)]) extends Serializable {
 
   def mapQueryVector(queryVector: Vector): DenseVector =
     sigma.multiply(U.transpose).multiply(queryVector)
@@ -49,17 +49,17 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 }
 
 object IRSystem {
-  def apply[T <: Document](corpus: Dataset[T], k: Int): IRSystem[T] = {
+  def apply[T <: Document](corpus: Dataset[T], numberOfSingularValues: Int): IRSystem[T] = {
     val termDocumentMatrix = TermDocumentMatrix(corpus)
-    initializeIRSystem(corpus, termDocumentMatrix, k)
+    initializeIRSystem(corpus, termDocumentMatrix, numberOfSingularValues)
   }
 
-  def apply[T <: Document](corpus: Dataset[T], pathToIndex: String, k: Int): IRSystem[T] = {
+  def apply[T <: Document](corpus: Dataset[T], pathToIndex: String, numberOfSingularValues: Int): IRSystem[T] = {
     val termDocumentMatrix = TermDocumentMatrix(pathToIndex)
-    initializeIRSystem(corpus, termDocumentMatrix, k)
+    initializeIRSystem(corpus, termDocumentMatrix, numberOfSingularValues)
   }
 
-  def apply(corpus: Dataset[Document], pathToIndex: String, pathToMatrices: String, k: Int) = {
+  def apply(corpus: Dataset[Document], pathToIndex: String, pathToMatrices: String, numberOfSingularValues: Int) = {
     val U = readMatrix(s"$pathToMatrices/U/part-00000")
     val V = readMatrix(s"$pathToMatrices/V/part-00000")
 
@@ -73,8 +73,9 @@ object IRSystem {
   }
 
   def initializeIRSystem[T <: Document](corpus: Dataset[T],
-                                 termDocumentMatrix: TermDocumentMatrix, k: Int): IRSystem[T] = {
-    val singularValueDecomposition = termDocumentMatrix.computeSVD(k)
+                                        termDocumentMatrix: TermDocumentMatrix,
+                                        numberOfSingularValues: Int): IRSystem[T] = {
+    val singularValueDecomposition = termDocumentMatrix.computeSVD(numberOfSingularValues)
     val UasDense = singularValueDecomposition.U.toBlockMatrix.toLocalMatrix.asML.toDense
     val VAsDense = sparkContext.parallelize(singularValueDecomposition.V.asML.rowIter.toSeq).zipWithIndex.persist(StorageLevel.MEMORY_ONLY_SER)
     val sigma = Matrices.diag(new DenseVector(singularValueDecomposition.s.toArray.map(1/_)))
