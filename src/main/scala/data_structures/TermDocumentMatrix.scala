@@ -24,7 +24,7 @@ case class TfIdfWeighting() extends WordWeight {
 
 case class TermFrequencyWeighting() extends WordWeight {
   override def weight(args: Map[String, Long]): Double =
-    args("termFrequency")
+    args("termFrequency").toDouble
 }
 
 class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRowMatrix) {
