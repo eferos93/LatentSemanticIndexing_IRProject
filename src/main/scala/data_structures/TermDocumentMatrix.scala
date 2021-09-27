@@ -17,9 +17,8 @@ trait WordWeight {
 }
 
 case class TfIdfWeighting() extends WordWeight {
-  override def weight(args: Map[String, Long]): Double = {
+  override def weight(args: Map[String, Long]): Double =
     args("termFrequency") * log(args("numberOfDocuments").toDouble / args("documentFrequency"))
-  }
 }
 
 case class TermFrequencyWeighting() extends WordWeight {
