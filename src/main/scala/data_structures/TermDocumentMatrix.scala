@@ -40,15 +40,11 @@ object TermDocumentMatrix {
   def apply(pathToIndex: String, tfidf: Boolean): TermDocumentMatrix =
     computeTermDocumentMatrix(InvertedIndex(pathToIndex), getWeigher(tfidf))
 
-  def getWeigher(tfidf: Boolean): WordWeight = {
-    if (tfidf) {
-      TfIdfWeighting()
-    } else {
-      TermFrequencyWeighting()
-    }
-  }
+  def getWeigher(tfidf: Boolean): WordWeight =
+    if (tfidf) TfIdfWeighting() else TermFrequencyWeighting()
+
   private def computeTermDocumentMatrix[T <: WordWeight](invertedIndex: InvertedIndex,
-                                                         wordWeight: WordWeight): TermDocumentMatrix = {
+                                                         wordWeight: T): TermDocumentMatrix = {
     val numberOfDocuments = invertedIndex.numberOfDocuments
     val matrixEntries = invertedIndex.dictionary
       .as[(String, Long, Long)].rdd // (term, docId, termFrequency)
