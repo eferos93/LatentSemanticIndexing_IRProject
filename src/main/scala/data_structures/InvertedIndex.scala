@@ -11,7 +11,7 @@ class InvertedIndex(val dictionary: DataFrame, val numberOfDocuments: Long)
 
 object InvertedIndex {
   def apply[T <: Document](corpus: Dataset[T]): InvertedIndex = {
-    val dictionary: DataFrame =
+    val index: DataFrame =
       removeStopWords(
         corpus
           .map(document => (document.id, clean(document.description)))
@@ -22,11 +22,11 @@ object InvertedIndex {
         .groupBy("term", "documentId") // groupBy together with agg, is a relational style aggregation
         .agg(sum("count").as("termFrequency"))
 
-    dictionary.repartition(1)
+    index.repartition(1)
       .write.mode(SaveMode.Ignore)
       .option("delimiter", ",").option("header", "true")
-      .csv(s"dictionary/")
-    new InvertedIndex(dictionary.persist(StorageLevel.MEMORY_ONLY_SER), corpus.count)
+      .csv("index/")
+    new InvertedIndex(index.persist(StorageLevel.MEMORY_ONLY_SER), corpus.count)
   }
 
   def apply(pathToDictionary: String): InvertedIndex = {

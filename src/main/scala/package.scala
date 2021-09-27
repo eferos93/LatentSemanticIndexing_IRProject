@@ -2,10 +2,16 @@ package org.ir
 
 
 import org.apache.spark.ml.feature.StopWordsRemover
+import org.apache.spark.ml.Pipeline
 import org.apache.spark.sql._
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkConf, SparkContext}
-import org.ir.project.data_structures.{Book, Movie}
+import org.ir.project.data_structures.{Book, Document, Movie}
+import com.johnsnowlabs.nlp.annotator.{Stemmer, Tokenizer}
+import com.johnsnowlabs.nlp.annotators.StopWordsCleaner
+import com.johnsnowlabs.nlp.base.DocumentAssembler
+import org.apache.spark.sql.functions.udf
+
 
 
 package object project {
@@ -37,17 +43,49 @@ package object project {
     //    - ^- : not a -
     text.replaceAll("[^\\w^\\s^-]", "").toLowerCase
 
+
   def removeStopWords(dataFrame: DataFrame, extraColumns: Seq[ColumnName] = Seq($"documentId")): DataFrame =
     new StopWordsRemover()
       .setInputCol("tokens")
       .setOutputCol("tokensCleaned")
       .transform(dataFrame)
-      .select(extraColumns :+ $"tokensCleaned": _*) // :+ ::= append element to Seq; :_* ::= convert Seq[ColumnName] to ColumnName*
+      .select(extraColumns :+ $"tokensCleaned": _*) // :+ -> append element to Seq; :_* -> convert Seq[ColumnName] to ColumnName*
       .withColumnRenamed("tokensCleaned", "tokens")
 
   val tokenize: String => Seq[String] = _.split(" ").filterNot(_.isEmpty).toSeq
 
   val clean: String => Seq[String] = (normaliseText andThen tokenize) (_)
+
+  def pipelineClean[T <: Document](corpus: Dataset[T], extraColumns: Seq[ColumnName] = Seq($"id")): DataFrame = {
+//    user defined column function
+    val udfNormaliseText = udf(normaliseText)
+    val filteredCorpus = corpus.withColumn("normalisedDescription", udfNormaliseText($"description"))
+
+    val documentAssembler = new DocumentAssembler()
+      .setInputCol("normalisedDescription")
+      .setOutputCol("text")
+    val tokenizer = new Tokenizer()
+      .setInputCols("text")
+      .setOutputCol("tokens")
+    val stemmer = new Stemmer()
+      .setInputCols("tokens")
+      .setOutputCol("stem")
+    val stopWordsCleaner = StopWordsCleaner.pretrained // english stop words
+      .setInputCols("stem")
+      .setOutputCol("stemNoStopWords")
+
+    val pipeline = new Pipeline().setStages(Array(
+      documentAssembler,
+      tokenizer,
+      stemmer,
+      stopWordsCleaner
+    ))
+
+    pipeline.fit(filteredCorpus).transform(filteredCorpus)
+      .selectExpr("id", "stemNoStopWords.result")
+      .withColumnRenamed("result", "tokens")
+      .select(extraColumns :+ $"tokens":_*)
+  }
 
   /**
    * data downloadable from https://github.com/davidsbatista/text-classification/blob/master/movies_genres.csv.bz2
