@@ -56,7 +56,7 @@ package object project {
 
   val clean: String => Seq[String] = (normaliseText andThen tokenize) (_)
 
-  def pipelineClean[T <: Document](corpus: Dataset[T], extraColumns: Seq[ColumnName] = Seq($"id")): DataFrame = {
+  def pipelineClean(corpus: Dataset[_], extraColumns: Seq[String] = Seq("id")): DataFrame = {
 //    user defined column function
     val udfNormaliseText = udf(normaliseText)
     val filteredCorpus = corpus.withColumn("normalisedDescription", udfNormaliseText($"description"))
@@ -82,9 +82,9 @@ package object project {
     ))
 
     pipeline.fit(filteredCorpus).transform(filteredCorpus)
-      .selectExpr("id", "stemNoStopWords.result")
+      .selectExpr(extraColumns :+ "stemNoStopWords.result":_*)
       .withColumnRenamed("result", "tokens")
-      .select(extraColumns :+ $"tokens":_*)
+//      .select(extraColumns :+ $"tokens":_*)
   }
 
   /**

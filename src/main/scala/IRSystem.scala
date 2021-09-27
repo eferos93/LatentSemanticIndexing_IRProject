@@ -18,8 +18,8 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     sigma.multiply(U.transpose).multiply(queryVector)
 
   def buildQueryVector(textQuery: String): Vector = {
-    val tokens = removeStopWords(
-      List(clean(textQuery)).toDF("tokens"), extraColumns = Seq.empty
+    val tokens = pipelineClean(
+      List(textQuery).toDF("description"), extraColumns = Seq.empty
     ).first().getAs[Seq[String]](0)
     val queryVector = Vectors.dense(vocabulary.map(word => tokens.count(_.equals(word)).toDouble).collect)
     mapQueryVector(queryVector)
