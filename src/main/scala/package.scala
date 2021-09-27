@@ -55,6 +55,7 @@ package object project {
     val tokenizer = new Tokenizer()
       .setInputCols("text")
       .setOutputCol("tokens")
+      .setMinLength(1)
     val stemmer = new Stemmer()
       .setInputCols("tokens")
       .setOutputCol("stem")

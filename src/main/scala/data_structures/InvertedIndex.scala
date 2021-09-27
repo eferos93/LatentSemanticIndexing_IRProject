@@ -16,6 +16,7 @@ object InvertedIndex {
         .select($"id" as "documentId", explode($"tokens") as "term") // explode creates a new row for each element in the given array column
         .groupBy("term", "documentId").count //group by and then count number of rows per group, returning a df with groupings and the counting
         .withColumnRenamed("count", "termFrequency")
+        .where($"term" =!= "") // seems like there are some tokens that are empty, even though Tokenizer should remove them
         .persist(StorageLevel.MEMORY_ONLY_SER)
 
     index.repartition(1)
