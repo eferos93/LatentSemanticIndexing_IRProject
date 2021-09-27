@@ -20,7 +20,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
   def buildQueryVector(textQuery: String): Vector = {
     val tokens = pipelineClean(
       List(textQuery).toDF("description"), extraColumns = Seq.empty
-    ).first().getAs[Seq[String]](0)
+    ).first.getAs[Seq[String]](0) // after cleaning, we have a df with only one row: we get the first element which will be as Row type and get its content as Seq[String]
     val queryVector = Vectors.dense(vocabulary.map(word => tokens.count(_.equals(word)).toDouble).collect)
     mapQueryVector(queryVector)
   }
