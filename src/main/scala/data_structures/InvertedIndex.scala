@@ -3,7 +3,7 @@ package data_structures
 
 import sparkSession.implicits._
 
-import org.apache.spark.sql.functions.sum
+import org.apache.spark.sql.functions.{explode, sum}
 import org.apache.spark.sql.{DataFrame, Dataset, SaveMode}
 import org.apache.spark.storage.StorageLevel
 
@@ -12,15 +12,10 @@ class InvertedIndex(val dictionary: DataFrame, val numberOfDocuments: Long)
 object InvertedIndex {
   def apply[T <: Document](corpus: Dataset[T]): InvertedIndex = {
     val index: DataFrame =
-      removeStopWords(
-        corpus
-          .map(document => (document.id, clean(document.description)))
-          .toDF("documentId", "tokens")
-      ).as[(Long, Seq[String])]
-        .flatMap { case (documentId, tokens) => tokens.map(term => (term, documentId, 1)) }
-        .toDF("term", "documentId", "count")
-        .groupBy("term", "documentId") // groupBy together with agg, is a relational style aggregation
-        .agg(sum("count").as("termFrequency"))
+      pipelineClean(corpus)
+        .select($"id" as "documentId", explode($"tokens") as "term") // explode creates a new row for each element in the given array column
+        .groupBy("term", "documentId").count //group by and then count number of rows per group, returning a df with groupings and the counting
+        .withColumnRenamed("count", "termFrequency")
 
     index.repartition(1)
       .write.mode(SaveMode.Ignore)
@@ -29,8 +24,8 @@ object InvertedIndex {
     new InvertedIndex(index.persist(StorageLevel.MEMORY_ONLY_SER), corpus.count)
   }
 
-  def apply(pathToDictionary: String): InvertedIndex = {
-    val dictionary = readData(pathToDictionary, delimiter = ",", isHeader = true)
-    new InvertedIndex(dictionary, dictionary.select("documentId").distinct.count)
+  def apply(pathToIndex: String): InvertedIndex = {
+    val index = readData(pathToIndex, delimiter = ",", isHeader = true)
+    new InvertedIndex(index, index.select("documentId").distinct.count)
   }
 }
