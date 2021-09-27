@@ -10,6 +10,7 @@ import org.ir.project.data_structures.{Book, Document, Movie}
 import com.johnsnowlabs.nlp.annotator.{Stemmer, Tokenizer}
 import com.johnsnowlabs.nlp.annotators.StopWordsCleaner
 import com.johnsnowlabs.nlp.base.DocumentAssembler
+import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
 
 
@@ -36,12 +37,14 @@ package object project {
     result
   }
 
-  val normaliseText: String => String = text =>
+ // function adapted to a column function: see its application at line 64
+  val normaliseText: UserDefinedFunction = udf { text: String =>
     //    pattern is:
     //    - ^\\w : not a word
     //    - ^\\s : not a  space
     //    - ^- : not a -
     text.replaceAll("[^\\w^\\s^-]", "").toLowerCase
+  }
 
 
   def removeStopWords(dataFrame: DataFrame, extraColumns: Seq[ColumnName] = Seq($"documentId")): DataFrame =
@@ -54,12 +57,11 @@ package object project {
 
   val tokenize: String => Seq[String] = _.split(" ").filterNot(_.isEmpty).toSeq
 
-  val clean: String => Seq[String] = (normaliseText andThen tokenize) (_)
+//  val clean: String => Seq[String] = (normaliseText andThen tokenize) (_)
 
-  def pipelineClean(corpus: Dataset[_], extraColumns: Seq[String] = Seq("id")): DataFrame = {
+  def pipelineClean(dataSet: Dataset[_], extraColumns: Seq[String] = Seq("id")): DataFrame = {
 //    user defined column function
-    val udfNormaliseText = udf(normaliseText)
-    val filteredCorpus = corpus.withColumn("normalisedDescription", udfNormaliseText($"description"))
+    val filteredCorpus = dataSet.withColumn("normalisedDescription", normaliseText($"description"))
 
     val documentAssembler = new DocumentAssembler()
       .setInputCol("normalisedDescription")
