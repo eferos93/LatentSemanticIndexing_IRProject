@@ -1,12 +1,11 @@
 package org.ir
 
 
-import org.apache.spark.ml.feature.StopWordsRemover
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.sql._
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkConf, SparkContext}
-import org.ir.project.data_structures.{Book, Document, Movie}
+import org.ir.project.data_structures.{Book, Movie}
 import com.johnsnowlabs.nlp.annotator.{Stemmer, Tokenizer}
 import com.johnsnowlabs.nlp.annotators.StopWordsCleaner
 import com.johnsnowlabs.nlp.base.DocumentAssembler
@@ -46,19 +45,6 @@ package object project {
     text.replaceAll("[^\\w^\\s^-]", "").toLowerCase
   }
 
-
-  def removeStopWords(dataFrame: DataFrame, extraColumns: Seq[ColumnName] = Seq($"documentId")): DataFrame =
-    new StopWordsRemover()
-      .setInputCol("tokens")
-      .setOutputCol("tokensCleaned")
-      .transform(dataFrame)
-      .select(extraColumns :+ $"tokensCleaned": _*) // :+ -> append element to Seq; :_* -> convert Seq[ColumnName] to ColumnName*
-      .withColumnRenamed("tokensCleaned", "tokens")
-
-  val tokenize: String => Seq[String] = _.split(" ").filterNot(_.isEmpty).toSeq
-
-//  val clean: String => Seq[String] = (normaliseText andThen tokenize) (_)
-
   def pipelineClean(dataSet: Dataset[_], extraColumns: Seq[String] = Seq("id")): DataFrame = {
 //    user defined column function
     val filteredCorpus = dataSet.withColumn("normalisedDescription", normaliseText($"description"))
@@ -86,7 +72,6 @@ package object project {
     pipeline.fit(filteredCorpus).transform(filteredCorpus)
       .selectExpr(extraColumns :+ "stemNoStopWords.result":_*)
       .withColumnRenamed("result", "tokens")
-//      .select(extraColumns :+ $"tokens":_*)
   }
 
   /**
@@ -96,12 +81,12 @@ package object project {
   def readData(filepath: String,
                delimiter: String = "\t",
                columnsToSelect: Option[Seq[ColumnName]] = None,
-               isHeader: Boolean = false): DataFrame = {
+               headerPresent: Boolean = false): DataFrame = {
     val data =
       sparkSession.read
         .option("delimiter", delimiter)
         .option("inferSchema", value = true)
-        .option("header", isHeader).csv(filepath)
+        .option("header", headerPresent).csv(filepath)
 
     columnsToSelect match {
       case Some(columns) => data.select(columns:_*)
