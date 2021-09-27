@@ -15,14 +15,5 @@ val sparkDependencies = Seq(
 
 libraryDependencies ++= sparkDependencies
 
-libraryDependencies  ++= Seq(
-  // Last stable release
-  "org.scalanlp" %% "breeze" % "1.3",
-
-  // The visualization library is distributed separately as well.
-  // It depends on LGPL code
-  "org.scalanlp" %% "breeze-viz" % "1.3"
-)
-
 //libraryDependencies += "com.github.fommil.netlib" % "all" % "1.1.2"
 libraryDependencies += "com.johnsnowlabs.nlp" %% "spark-nlp" % "3.2.3"
