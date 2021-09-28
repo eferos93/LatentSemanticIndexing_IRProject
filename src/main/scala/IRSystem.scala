@@ -82,7 +82,7 @@ object IRSystem {
     val VAsDense = sparkContext.parallelize(singularValueDecomposition.V.asML.rowIter.toSeq)
       .zipWithIndex.persist(StorageLevel.MEMORY_ONLY_SER)
     val sigma = Matrices.diag(new DenseVector(singularValueDecomposition.s.toArray.map(1/_)))
-    new IRSystem(corpus.persist(StorageLevel.MEMORY_ONLY_SER),
+    new IRSystem(corpus,
       termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
       UasDense, sigma, VAsDense)
   }
