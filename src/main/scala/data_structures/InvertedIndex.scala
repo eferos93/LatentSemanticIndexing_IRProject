@@ -26,7 +26,8 @@ object InvertedIndex {
   }
 
   def apply(pathToIndex: String): InvertedIndex = {
-    val index = readData(pathToIndex, delimiter = ",", headerPresent = true).persist(StorageLevel.MEMORY_ONLY_SER)
+//    val index = readData(pathToIndex, delimiter = ",", headerPresent = true).persist(StorageLevel.MEMORY_ONLY_SER)
+    val index = sparkSession.read.option("header", "true").parquet(pathToIndex).persist(StorageLevel.MEMORY_ONLY_SER)
     new InvertedIndex(index, index.select("documentId").distinct.count)
   }
 }
