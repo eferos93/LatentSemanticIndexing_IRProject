@@ -46,7 +46,6 @@ package object project {
   }
 
   def pipelineClean(dataSet: Dataset[_], extraColumns: Seq[String] = Seq("id")): DataFrame = {
-//    user defined column function
     val filteredCorpus = dataSet.withColumn("normalisedDescription", normaliseText($"description"))
 
     val documentAssembler = new DocumentAssembler()
