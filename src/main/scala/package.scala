@@ -23,7 +23,7 @@ package object project {
 
   lazy val sparkSession: SparkSession = SparkSession.builder.config(sparkConfiguration).getOrCreate()
   lazy val sparkContext: SparkContext = sparkSession.sparkContext
-  sparkContext.setLogLevel("WARN")
+  sparkContext.setLogLevel("OFF")
 
   import sparkSession.implicits._
 

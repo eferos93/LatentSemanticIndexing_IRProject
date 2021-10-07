@@ -6,14 +6,12 @@ import sparkSession.implicits._
 import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Matrix, Vector, Vectors}
 import org.apache.spark.mllib.linalg.distributed.{IndexedRow, IndexedRowMatrix}
 import org.apache.spark.mllib.linalg.{Vectors => OldVectors}
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Dataset, Encoder}
-import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
+import org.apache.spark.sql.{Dataset, SaveMode}
 import org.apache.spark.storage.StorageLevel
 
 class IRSystem[T <: Document](val corpus: Dataset[T],
                               val vocabulary: Dataset[String],
-                              val U: DenseMatrix, val inverseSigma: Matrix, val V: RDD[(Vector, Long)]) extends Serializable {
+                              val U: DenseMatrix, val inverseSigma: Matrix, val V: Dataset[(Vector, Int)]) extends Serializable {
 
   def mapQueryVector(queryVector: Vector): DenseVector =
     inverseSigma.multiply(U.transpose).multiply(queryVector)
@@ -32,7 +30,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
   def answerQuery(textQuery: String, top: Int): Seq[(T, Double)] = {
     val queryVector = buildQueryVector(textQuery)
     V.map { case (documentVector, documentId) => (documentId, computeCosineSimilarity(queryVector, documentVector)) }
-      .sortBy(_._2, ascending = false)
+      .orderBy($"_2".desc)
       .take(top)
       .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score) }
   }
@@ -41,13 +39,11 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     println(answerQuery(query, top).mkString("\n"))
 
   def saveIrSystem(): Unit = {
-    implicit val encoder: Encoder[Vector] = ExpressionEncoder(): Encoder[Vector]
-    sparkSession.createDataset[Vector](sparkContext.parallelize(U.rowIter.toSeq))//(ExpressionEncoder(): Encoder[Vector])
-      .write.parquet("matrices/U")
-    sparkSession.createDataset(V.map(_._1))//(ExpressionEncoder(): Encoder[Vector])
-      .write.parquet("matrices/V")//.saveAsTextFile("matrices/V")
-    sparkSession.createDataset(sparkContext.parallelize(inverseSigma.rowIter.toSeq))//(ExpressionEncoder(): Encoder[Vector])
-      .write.parquet("matrices/s")//.saveAsTextFile("matrices/s")
+    sparkSession.createDataset(U.rowIter.toSeq.zipWithIndex)
+      .write.mode(SaveMode.Overwrite).parquet("matrices/U")
+    V.write.parquet("matrices/V")
+    sparkSession.createDataset(inverseSigma.rowIter.toSeq.zipWithIndex)
+      .write.mode(SaveMode.Overwrite).parquet("matrices/s")
   }
 
 
@@ -60,14 +56,14 @@ object IRSystem {
   }
 
   def apply[T <: Document](corpus: Dataset[T],
-                           pathToIndex: String,
                            numberOfSingularValues: Int,
+                           pathToIndex: String,
                            tfidf: Boolean): IRSystem[T] = {
     val termDocumentMatrix = TermDocumentMatrix(pathToIndex, tfidf)
     initializeIRSystem(corpus, termDocumentMatrix, numberOfSingularValues)
   }
 
-  def apply(corpus: Dataset[Document], pathToIndex: String, pathToMatrices: String): IRSystem[Document] = {
+  def apply[T <: Document](corpus: Dataset[T], pathToIndex: String, pathToMatrices: String): IRSystem[T] = {
     val U = readMatrix(s"$pathToMatrices/U/").toDense
     val V = readV(s"$pathToMatrices/V/")
     val inverseSigma = readMatrix(s"$pathToMatrices/s/")
@@ -78,14 +74,14 @@ object IRSystem {
     )
   }
 
-  def readV(pathToV: String): RDD[(Vector, Long)] =
-    sparkContext.textFile(pathToV).zipWithIndex
-      .map { case (line, index) => (OldVectors.parse(line).asML, index) }
+  def readV(pathToV: String): Dataset[(Vector, Int)] =
+    sparkSession.read.parquet(pathToV).orderBy($"_2").as[(Vector, Int)]
+      .map { case (vector, index) => (OldVectors.parse(vector.toString).asML, index) }
 
   def readMatrix(pathToMatrix: String): Matrix = {
-    val matrixAsRDD = sparkContext.textFile(pathToMatrix).zipWithIndex
-      .map { case (line, index) => IndexedRow(index, OldVectors.parse(line)) }
-    new IndexedRowMatrix(matrixAsRDD, matrixAsRDD.count, matrixAsRDD.first.vector.size)
+    val matrixDF = sparkSession.read.parquet(pathToMatrix).orderBy($"_2").as[(Vector, Int)]
+      .map { case (vector, index) => IndexedRow(index, OldVectors.parse(vector.toString)) }
+    new IndexedRowMatrix(matrixDF.rdd, matrixDF.count, matrixDF.first.vector.size)
       .toBlockMatrix.toLocalMatrix.asML.toDense
   }
 
@@ -94,11 +90,11 @@ object IRSystem {
                                         numberOfSingularValues: Int): IRSystem[T] = {
     val singularValueDecomposition = termDocumentMatrix.computeSVD(numberOfSingularValues)
     val UasDense = singularValueDecomposition.U.toBlockMatrix.toLocalMatrix.asML.toDense
-    val VAsDense = sparkContext.parallelize(singularValueDecomposition.V.asML.rowIter.toSeq)
-      .zipWithIndex.persist(StorageLevel.MEMORY_ONLY_SER)
+    val V = singularValueDecomposition.V.asML.rowIter.toSeq
+      .zipWithIndex.toDS.persist(StorageLevel.MEMORY_ONLY_SER)
     val inverseSigma = Matrices.diag(new DenseVector(singularValueDecomposition.s.toArray.map(1/_)))
     new IRSystem(corpus,
       termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
-      UasDense, inverseSigma, VAsDense)
+      UasDense, inverseSigma, V)
   }
 }

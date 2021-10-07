@@ -16,12 +16,12 @@ trait WordWeight {
   def weight(args: Map[String, Long]): Double
 }
 
-case class TfIdfWeighting() extends WordWeight {
+class TfIdfWeighting extends WordWeight {
   override def weight(args: Map[String, Long]): Double =
     args("termFrequency") * log(args("numberOfDocuments").toDouble / args("documentFrequency"))
 }
 
-case class TermFrequencyWeighting() extends WordWeight {
+class TermFrequencyWeighting extends WordWeight {
   override def weight(args: Map[String, Long]): Double =
     args("termFrequency").toDouble
 }
@@ -41,7 +41,7 @@ object TermDocumentMatrix {
     computeTermDocumentMatrix(InvertedIndex(pathToIndex), getWeigher(tfidf))
 
   def getWeigher(tfidf: Boolean): WordWeight =
-    if (tfidf) TfIdfWeighting() else TermFrequencyWeighting()
+    if (tfidf) new TfIdfWeighting else new TermFrequencyWeighting
 
   private def computeTermDocumentMatrix[T <: WordWeight](invertedIndex: InvertedIndex,
                                                          wordWeight: T): TermDocumentMatrix = {
@@ -64,7 +64,6 @@ object TermDocumentMatrix {
               MatrixEntry(
                 termIndex,
                 documentId,
-//                termFrequency * log(numberOfDocuments.toDouble / documentFrequency)
                 wordWeight.weight(args)
               )
           }
