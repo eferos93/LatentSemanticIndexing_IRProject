@@ -19,10 +19,9 @@ object InvertedIndex {
         .where($"term" =!= "") // seems like there are some tokens that are empty, even though Tokenizer should remove them
         .persist(StorageLevel.MEMORY_ONLY_SER)
 
-    index.repartition(1)
-      .write.mode(SaveMode.Ignore)
-      .option("delimiter", ",").option("header", "true")
-      .csv("index/")
+    index.write.mode(SaveMode.Ignore)
+      .option("header", "true")
+      .parquet("index/")
     new InvertedIndex(index, corpus.count)
   }
 

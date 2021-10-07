@@ -40,9 +40,9 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     println(answerQuery(query, top).mkString("\n"))
 
   def saveIrSystem(): Unit = {
-    sparkContext.parallelize(U.rowIter.toSeq, numSlices = 1).saveAsTextFile("matrices/U")
-    V.map(_._1).repartition(1).saveAsTextFile("matrices/V")
-    sparkContext.parallelize(Seq(sigma), numSlices = 1).saveAsTextFile("matrices/s")
+    sparkContext.parallelize(U.rowIter.toSeq).saveAsTextFile("matrices/U")
+    V.map(_._1).saveAsTextFile("matrices/V")
+    sparkContext.parallelize(Seq(sigma)).saveAsTextFile("matrices/s")
   }
 
 
