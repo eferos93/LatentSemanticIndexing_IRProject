@@ -7,15 +7,16 @@ import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Matrix, V
 import org.apache.spark.mllib.linalg.distributed.{IndexedRow, IndexedRowMatrix}
 import org.apache.spark.mllib.linalg.{Vectors => OldVectors}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.{Dataset, Encoder}
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.storage.StorageLevel
 
 class IRSystem[T <: Document](val corpus: Dataset[T],
                               val vocabulary: Dataset[String],
-                              val U: DenseMatrix, val sigma: Matrix, val V: RDD[(Vector, Long)]) extends Serializable {
+                              val U: DenseMatrix, val inverseSigma: Matrix, val V: RDD[(Vector, Long)]) extends Serializable {
 
   def mapQueryVector(queryVector: Vector): DenseVector =
-    sigma.multiply(U.transpose).multiply(queryVector)
+    inverseSigma.multiply(U.transpose).multiply(queryVector)
 
   def buildQueryVector(textQuery: String): Vector = {
     val tokens = pipelineClean(
@@ -40,9 +41,13 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     println(answerQuery(query, top).mkString("\n"))
 
   def saveIrSystem(): Unit = {
-    sparkContext.parallelize(U.rowIter.toSeq).saveAsTextFile("matrices/U")
-    V.map(_._1).saveAsTextFile("matrices/V")
-    sparkContext.parallelize(Seq(sigma)).saveAsTextFile("matrices/s")
+    implicit val encoder: Encoder[Vector] = ExpressionEncoder(): Encoder[Vector]
+    sparkSession.createDataset[Vector](sparkContext.parallelize(U.rowIter.toSeq))//(ExpressionEncoder(): Encoder[Vector])
+      .write.parquet("matrices/U")
+    sparkSession.createDataset(V.map(_._1))//(ExpressionEncoder(): Encoder[Vector])
+      .write.parquet("matrices/V")//.saveAsTextFile("matrices/V")
+    sparkSession.createDataset(sparkContext.parallelize(inverseSigma.rowIter.toSeq))//(ExpressionEncoder(): Encoder[Vector])
+      .write.parquet("matrices/s")//.saveAsTextFile("matrices/s")
   }
 
 
@@ -62,10 +67,20 @@ object IRSystem {
     initializeIRSystem(corpus, termDocumentMatrix, numberOfSingularValues)
   }
 
-  def apply(corpus: Dataset[Document], pathToIndex: String, pathToMatrices: String, numberOfSingularValues: Int) = {
-    val U = readMatrix(s"$pathToMatrices/U/part-00000")
-    val V = readMatrix(s"$pathToMatrices/V/part-00000")
+  def apply(corpus: Dataset[Document], pathToIndex: String, pathToMatrices: String): IRSystem[Document] = {
+    val U = readMatrix(s"$pathToMatrices/U/").toDense
+    val V = readV(s"$pathToMatrices/V/")
+    val inverseSigma = readMatrix(s"$pathToMatrices/s/")
+    val index = sparkSession.read.option("header", "true").parquet(pathToIndex)
+    new IRSystem(corpus,
+      index.select("term").distinct.as[String].persist(StorageLevel.MEMORY_ONLY_SER),
+      U, inverseSigma, V
+    )
   }
+
+  def readV(pathToV: String): RDD[(Vector, Long)] =
+    sparkContext.textFile(pathToV).zipWithIndex
+      .map { case (line, index) => (OldVectors.parse(line).asML, index) }
 
   def readMatrix(pathToMatrix: String): Matrix = {
     val matrixAsRDD = sparkContext.textFile(pathToMatrix).zipWithIndex
@@ -81,9 +96,9 @@ object IRSystem {
     val UasDense = singularValueDecomposition.U.toBlockMatrix.toLocalMatrix.asML.toDense
     val VAsDense = sparkContext.parallelize(singularValueDecomposition.V.asML.rowIter.toSeq)
       .zipWithIndex.persist(StorageLevel.MEMORY_ONLY_SER)
-    val sigma = Matrices.diag(new DenseVector(singularValueDecomposition.s.toArray.map(1/_)))
+    val inverseSigma = Matrices.diag(new DenseVector(singularValueDecomposition.s.toArray.map(1/_)))
     new IRSystem(corpus,
       termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
-      UasDense, sigma, VAsDense)
+      UasDense, inverseSigma, VAsDense)
   }
 }
