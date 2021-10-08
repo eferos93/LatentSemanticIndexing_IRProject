@@ -5,12 +5,12 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.sql._
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkConf, SparkContext}
-import org.ir.project.data_structures.Movie
+import org.ir.project.data_structures.{Movie, NplDocument}
 import com.johnsnowlabs.nlp.annotator.{Stemmer, Tokenizer}
 import com.johnsnowlabs.nlp.annotators.StopWordsCleaner
 import com.johnsnowlabs.nlp.base.DocumentAssembler
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.functions.{split, udf}
 
 
 
@@ -118,7 +118,42 @@ package object project {
   }
 
   /**
-   * http://ir.dcs.gla.ac.uk/resources/test_collections/npl/
+   * Data can be downloaded with the link below, but use the data in this repo, as there were some problems
+   *  with the file rlv-ass http://ir.dcs.gla.ac.uk/resources/test_collections/npl/
    */
-  def readNplCorpus() = ???
+  def readNplCorpus(path: String = "data/npl/doc-text"): Dataset[NplDocument] = {
+    val df: DataFrame = sparkSession.read.option("lineSep", "   /\n").text(path)
+    val columnsSplit = split(df("value"), "\n")
+    df.withColumn("id", columnsSplit.getItem(0))
+      .withColumn("description", columnsSplit.getItem(1))
+      .select("id", "description")
+      .as[NplDocument]
+  }
+
+  def readQueryAndRelevance(pathToQueries: String = "data/npl/query-text",
+                            pathToRelevance: String = "data/npl/rlv-ass"): DataFrame = {
+    var queryDf = sparkSession.read.option("lineSep", "/\n").text(pathToQueries)
+    var relevanceDf = sparkSession.read.option("lineSep", "/\n").text(pathToRelevance)
+    val queryColumnsSplit = split(queryDf("value"), "\n", 2)
+    val relevanceColumnSplit = split(relevanceDf("value"), "\n", 2)
+    queryDf =
+      queryDf
+        .withColumn("id", queryColumnsSplit.getItem(0))
+        .withColumn("query", queryColumnsSplit.getItem(1))
+        .select("id", "query")
+    relevanceDf =
+      relevanceDf
+        .withColumn("queryId", relevanceColumnSplit.getItem(0))
+        .withColumn("relevanceSet", relevanceColumnSplit.getItem(1))
+        .select("queryId", "relevanceSet")
+
+    val stringToList: UserDefinedFunction = udf { relevanceSet: String =>
+      relevanceSet.split("[\n|\\s+]").filterNot(_.isBlank).map(_.toInt)
+    }
+
+    queryDf
+      .join(relevanceDf, queryDf("id") === relevanceDf("queryId"))
+      .withColumn("relevanceList", stringToList($"relevanceSet"))
+      .selectExpr("queryId", "query", "relevanceList AS relevanceSet")
+  }
 }
