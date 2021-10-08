@@ -11,6 +11,7 @@ import com.johnsnowlabs.nlp.annotators.StopWordsCleaner
 import com.johnsnowlabs.nlp.base.DocumentAssembler
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.{split, udf}
+import org.apache.spark.sql.types.IntegerType
 
 
 
@@ -138,12 +139,12 @@ package object project {
     val relevanceColumnSplit = split(relevanceDf("value"), "\n", 2)
     queryDf =
       queryDf
-        .withColumn("id", queryColumnsSplit.getItem(0))
+        .withColumn("id", queryColumnsSplit.getItem(0).cast(IntegerType))
         .withColumn("query", queryColumnsSplit.getItem(1))
         .select("id", "query")
     relevanceDf =
       relevanceDf
-        .withColumn("queryId", relevanceColumnSplit.getItem(0))
+        .withColumn("queryId", relevanceColumnSplit.getItem(0).cast(IntegerType))
         .withColumn("relevanceSet", relevanceColumnSplit.getItem(1))
         .select("queryId", "relevanceSet")
 
