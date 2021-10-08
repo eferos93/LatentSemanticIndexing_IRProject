@@ -12,10 +12,9 @@ import scala.language.implicitConversions
 case class Evaluator[T <: Document](irSystem: IRSystem[T], queryRelevance: DataFrame) {
 
   private def precision(relevanceSet: mutable.WrappedArray[Int],
-                        documentIds: Seq[Long],
-                        numberOfDocuments: Int): Double = {
+                        documentIds: Seq[Long]): Double = {
     implicit def bool2int(b: Boolean): Int = if (b) 1 else 0
-    documentIds.take(numberOfDocuments).map(relevanceSet.contains(_): Int).sum.toDouble / numberOfDocuments
+    documentIds.map(relevanceSet.contains(_): Int).sum.toDouble / documentIds.length
   }
 
   def averagePrecision(query: String, relevanceSet: mutable.WrappedArray[Int]): Double = {
@@ -23,7 +22,7 @@ case class Evaluator[T <: Document](irSystem: IRSystem[T], queryRelevance: DataF
       .map(_._1.id + 1) // + 1 cause ids internally starts from 0
 
     (1 to relevanceSet.length).map { index =>
-      precision(relevanceSet, documentIds, index) // precision
+      precision(relevanceSet, documentIds.take(index)) // precision
     }.sum / relevanceSet.length
   }
 
