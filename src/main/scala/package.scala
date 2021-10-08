@@ -149,7 +149,9 @@ package object project {
         .select("queryId", "relevanceSet")
 
     val stringToList: UserDefinedFunction = udf { relevanceSet: String =>
-      relevanceSet.split("[\n|\\s+]").filterNot(_.isBlank).map(_.toInt)
+      // withFilter is a MonadicFilter, thus it doesn't return a new collection like filter(),
+      // but it restricts the domain of the subsequent transformations. In simple words, it is lazy
+      relevanceSet.split("[\n|\\s+]").withFilter(!_.isBlank).map(_.toInt)
     }
 
     queryDf
