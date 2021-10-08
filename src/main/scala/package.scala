@@ -5,7 +5,7 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.sql._
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkConf, SparkContext}
-import org.ir.project.data_structures.{Book, Movie}
+import org.ir.project.data_structures.Movie
 import com.johnsnowlabs.nlp.annotator.{Stemmer, Tokenizer}
 import com.johnsnowlabs.nlp.annotators.StopWordsCleaner
 import com.johnsnowlabs.nlp.base.DocumentAssembler
@@ -95,13 +95,14 @@ package object project {
   }
 
   /**
-   * Read the Corpus data
+   * Read the Corpus data.
+   * Download it from http://www.cs.cmu.edu/~ark/personas/ extract the data inside the data/ directory
    *
    * @param filepathTitles path to the corpus
    * @return The corpus represented as a Dataset[Movie]
    */
-  def readMovieCorpus(filepathTitles: String = "data/movie.metadata.tsv",
-                      filepathDescriptions: String = "data/plot_summaries.txt"): Dataset[Movie] = {
+  def readMovieCorpus(filepathTitles: String = "data/MovieSummaries/movie.metadata.tsv",
+                      filepathDescriptions: String = "data/MovieSummaries/plot_summaries.txt"): Dataset[Movie] = {
     val titles =
       readData(filepathTitles, columnsToSelect = Option(Seq($"_c0", $"_c2")))
       .toDF("internalId", "title")
@@ -116,13 +117,8 @@ package object project {
       .as[Movie].persist(StorageLevel.MEMORY_ONLY_SER)
   }
 
-  def readBooksCorpus(path: String = "data/booksummaries.txt"): Dataset[Book] = {
-    readData(path, columnsToSelect = Option(Seq($"_c2", $"_c3", $"_c6")))
-      .toDF("title", "author", "description")
-      .orderBy($"title")
-      .rdd.zipWithIndex
-      .map { case (row, documentId) => (documentId, row.getString(0), row.getString(1), row.getString(2)) }
-      .toDF("id", "title", "author", "description")
-      .as[Book].persist(StorageLevel.MEMORY_ONLY_SER)
-  }
+  /**
+   * http://ir.dcs.gla.ac.uk/resources/test_collections/npl/
+   */
+  def readNplCorpus() = ???
 }
