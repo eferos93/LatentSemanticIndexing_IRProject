@@ -46,8 +46,11 @@ package object project {
     text.replaceAll("[^\\w^\\s^-]", "").toLowerCase
   }
 
-  def pipelineClean(dataSet: Dataset[_], extraColumns: Seq[String] = Seq("id")): DataFrame = {
-    val filteredCorpus = dataSet.withColumn("normalisedDescription", normaliseText($"description"))
+  def pipelineClean(dataSet: Dataset[_],
+                    columnToClean: ColumnName = $"description",
+                    extraColumns: Seq[String] = Seq("id")
+                    ): DataFrame = {
+    val filteredCorpus = dataSet.withColumn("normalisedDescription", normaliseText(columnToClean))
 
     val documentAssembler = new DocumentAssembler()
       .setInputCol("normalisedDescription")
@@ -125,7 +128,7 @@ package object project {
   def readNplCorpus(path: String = "data/npl/doc-text"): Dataset[NplDocument] = {
     val df: DataFrame = sparkSession.read.option("lineSep", "   /\n").text(path)
     val columnsSplit = split(df("value"), "\n")
-    df.withColumn("id", columnsSplit.getItem(0))
+    df.withColumn("id", columnsSplit.getItem(0).cast(IntegerType) - 1) //I want indexes to start from 0 (for matrix)
       .withColumn("description", columnsSplit.getItem(1))
       .select("id", "description")
       .as[NplDocument]

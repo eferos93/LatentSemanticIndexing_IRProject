@@ -35,7 +35,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
       .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score) }
   }
 
-  def query(query: String, top: Int = 5): Unit =
+  def query(query: String, top: Int = 10): Unit =
     println(answerQuery(query, top).mkString("\n"))
 
   def saveIrSystem(): Unit = {
