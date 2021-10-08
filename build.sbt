@@ -17,4 +17,3 @@ libraryDependencies ++= sparkDependencies
 
 libraryDependencies += "com.github.fommil.netlib" % "all" % "1.1.2"
 libraryDependencies += "com.johnsnowlabs.nlp" %% "spark-nlp" % "3.3.0"
-libraryDependencies += "org.scalanlp" %% "breeze" % "2.0"
