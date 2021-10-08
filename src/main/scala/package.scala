@@ -161,5 +161,6 @@ package object project {
       .join(relevanceDf, queryDf("id") === relevanceDf("queryId"))
       .withColumn("relevanceList", stringToList($"relevanceSet"))
       .selectExpr("queryId", "query", "relevanceList AS relevanceSet")
+      .persist(StorageLevel.MEMORY_ONLY_SER)
   }
 }
