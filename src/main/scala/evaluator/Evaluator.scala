@@ -31,6 +31,4 @@ case class Evaluator[T <: Document](irSystem: IRSystem[T], queryRelevance: DataF
       .map { case (query, relevanceSet) => averagePrecision(query, relevanceSet) }
       .sum / queryRelevance.count
   }
-
-
 }

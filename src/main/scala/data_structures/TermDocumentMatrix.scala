@@ -12,7 +12,7 @@ import org.apache.spark.sql.Dataset
 
 import scala.math.log
 
-trait WordWeight {
+trait WordWeight extends Serializable {
   def weight(args: Map[String, Long]): Double
 }
 

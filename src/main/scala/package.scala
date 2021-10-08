@@ -131,7 +131,7 @@ package object project {
     df.withColumn("id", columnsSplit.getItem(0).cast(IntegerType) - 1) //I want indexes to start from 0 (for matrix)
       .withColumn("description", columnsSplit.getItem(1))
       .select("id", "description")
-      .as[NplDocument]
+      .as[NplDocument].persist(StorageLevel.MEMORY_ONLY_SER)
   }
 
   def readQueryAndRelevance(pathToQueries: String = "data/npl/query-text",
