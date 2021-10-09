@@ -23,7 +23,6 @@ object Evaluator {
             (irSystem.answerQuery(query, relevanceSet.length).map(_._1.id).toArray, relevanceSet)
         }.toSeq
 
-    val rankingMetrics = new RankingMetrics(sparkContext.parallelize(relevantDocuments))
-    new Evaluator[T](rankingMetrics)
+    new Evaluator[T](new RankingMetrics(sparkContext.parallelize(relevantDocuments)))
   }
 }
