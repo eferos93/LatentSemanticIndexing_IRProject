@@ -2,24 +2,22 @@ package org.ir.project
 package evaluator
 
 import data_structures.Document
-import sparkSession.implicits._
 
 import org.apache.spark.mllib.evaluation.RankingMetrics
-import org.apache.spark.sql.DataFrame
 
 
 class Evaluator[T <: Document](rankingMetrics: RankingMetrics[Long]) {
   def meanAveragePrecision(): Double =
     rankingMetrics.meanAveragePrecision
 
-  def normalisedDiscountedCumulativeGain(k: Int): Double =
+  def normalisedDiscountedCumulativeGainAt(k: Int): Double =
     rankingMetrics.ndcgAt(k)
 }
 
 object Evaluator {
-  def apply[T <: Document](irSystem: IRSystem[T], queryRelevance: DataFrame): Evaluator[T] = {
+  def apply[T <: Document](irSystem: IRSystem[T], queryRelevance: Array[(String, Array[Long])]): Evaluator[T] = {
     val relevantDocuments =
-      queryRelevance.select("query", "relevanceSet").as[(String, Array[Long])].collect
+      queryRelevance
         .map {
           case (query, relevanceSet) =>
             (irSystem.answerQuery(query, relevanceSet.length).map(_._1.id).toArray, relevanceSet)

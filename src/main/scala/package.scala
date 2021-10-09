@@ -135,7 +135,7 @@ package object project {
   }
 
   def readQueryAndRelevance(pathToQueries: String = "data/npl/query-text",
-                            pathToRelevance: String = "data/npl/rlv-ass"): DataFrame = {
+                            pathToRelevance: String = "data/npl/rlv-ass"): Array[(String, Array[Long])] = {
     var queryDf = sparkSession.read.option("lineSep", "/\n").text(pathToQueries)
     var relevanceDf = sparkSession.read.option("lineSep", "/\n").text(pathToRelevance)
     val queryColumnsSplit = split(queryDf("value"), "\n", 2)
@@ -160,7 +160,8 @@ package object project {
     queryDf
       .join(relevanceDf, queryDf("id") === relevanceDf("queryId"))
       .withColumn("relevanceList", stringToList($"relevanceSet"))
-      .selectExpr("queryId", "query", "relevanceList AS relevanceSet")
-      .persist(StorageLevel.MEMORY_ONLY_SER)
+      .selectExpr("query", "relevanceList AS relevanceSet")
+      .as[(String, Array[Long])]
+      .collect
   }
 }
