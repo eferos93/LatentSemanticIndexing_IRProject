@@ -2,33 +2,30 @@ package org.ir.project
 package evaluator
 
 import data_structures.Document
-
-import org.apache.spark.sql.DataFrame
 import sparkSession.implicits._
 
-import scala.collection.mutable
-import scala.language.implicitConversions
+import org.apache.spark.mllib.evaluation.RankingMetrics
+import org.apache.spark.sql.DataFrame
 
-case class Evaluator[T <: Document](irSystem: IRSystem[T], queryRelevance: DataFrame) {
 
-  private def precision(relevanceSet: mutable.WrappedArray[Int],
-                        documentIds: Seq[Long]): Double = {
-    implicit def bool2int(b: Boolean): Int = if (b) 1 else 0
-    documentIds.map(relevanceSet.contains(_): Int).sum.toDouble / documentIds.length
-  }
+class Evaluator[T <: Document](rankingMetrics: RankingMetrics[Long]) {
+  def meanAveragePrecision(): Double =
+    rankingMetrics.meanAveragePrecision
 
-  def averagePrecision(query: String, relevanceSet: mutable.WrappedArray[Int]): Double = {
-    val documentIds = irSystem.answerQuery(query, relevanceSet.length)
-      .map(_._1.id + 1) // + 1 cause ids internally starts from 0
+  def normalisedDiscountedCumulativeGain(k: Int): Double =
+    rankingMetrics.ndcgAt(k)
+}
 
-    (1 to relevanceSet.length).map { index =>
-      precision(relevanceSet, documentIds.take(index)) // precision
-    }.sum / relevanceSet.length
-  }
+object Evaluator {
+  def apply[T <: Document](irSystem: IRSystem[T], queryRelevance: DataFrame): Evaluator[T] = {
+    val relevantDocuments =
+      queryRelevance.select("query", "relevanceSet").as[(String, Array[Long])].collect
+        .map {
+          case (query, relevanceSet) =>
+            (irSystem.answerQuery(query, relevanceSet.length).map(_._1.id).toArray, relevanceSet)
+        }.toSeq
 
-  def meanAveragePrecision(): Double = {
-    queryRelevance.select("query", "relevanceSet").as[(String, mutable.WrappedArray[Int])].collect
-      .map { case (query, relevanceSet) => averagePrecision(query, relevanceSet) }
-      .sum / queryRelevance.count
+    val rankingMetrics = new RankingMetrics(sparkContext.parallelize(relevantDocuments))
+    new Evaluator[T](rankingMetrics)
   }
 }
