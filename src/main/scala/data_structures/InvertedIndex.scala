@@ -3,7 +3,7 @@ package data_structures
 
 import sparkSession.implicits._
 
-import org.apache.spark.sql.functions.{explode, sum}
+import org.apache.spark.sql.functions.explode
 import org.apache.spark.sql.{DataFrame, Dataset, SaveMode}
 import org.apache.spark.storage.StorageLevel
 
@@ -26,7 +26,6 @@ object InvertedIndex {
   }
 
   def apply(pathToIndex: String): InvertedIndex = {
-//    val index = readData(pathToIndex, delimiter = ",", headerPresent = true).persist(StorageLevel.MEMORY_ONLY_SER)
     val index = sparkSession.read.option("header", "true").parquet(pathToIndex).persist(StorageLevel.MEMORY_ONLY_SER)
     new InvertedIndex(index, index.select("documentId").distinct.count)
   }
