@@ -76,7 +76,7 @@ object IRSystem {
 
   def readV(pathToV: String): Dataset[(Vector, Int)] =
     sparkSession.read.parquet(pathToV).orderBy($"_2").as[(Vector, Int)]
-      .map { case (vector, index) => (OldVectors.parse(vector.toString).asML, index) }
+//      .map { case (vector, index) => (OldVectors.parse(vector.toString).asML, index) }
 
   def readMatrix(pathToMatrix: String): Matrix = {
     val matrixDF = sparkSession.read.parquet(pathToMatrix).orderBy($"_2").as[(Vector, Int)]
