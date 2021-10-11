@@ -5,13 +5,16 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.sql._
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkConf, SparkContext}
-import org.ir.project.data_structures.{Movie, NplDocument}
+import org.ir.project.data_structures.{CranfieldDocument, Movie, NplDocument}
 import com.johnsnowlabs.nlp.annotator.{Stemmer, Tokenizer}
 import com.johnsnowlabs.nlp.annotators.StopWordsCleaner
 import com.johnsnowlabs.nlp.base.DocumentAssembler
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.{split, udf}
+import org.apache.spark.sql.functions.{dayofweek, split, udf}
 import org.apache.spark.sql.types.IntegerType
+
+import scala.util.matching.Regex
+import scala.io.Source
 
 
 
@@ -163,5 +166,42 @@ package object project {
       .selectExpr("query", "relevanceList AS relevanceSet")
       .as[(String, Array[Long])]
       .collect
+  }
+
+  def readCranfield(path: String = "data/cranfield/cran.all.1400"): Seq[CranfieldDocument] = {
+    var corpus: Seq[CranfieldDocument] = Seq.empty
+    var isTitle = false
+    var isText = false
+    var text = ""
+    var title = ""
+    var id: Long = 0
+    val source = Source.fromFile(path)
+    source
+      .getLines()
+      .foreach { line =>
+        if (line.startsWith(".A"))
+          isTitle = false
+        else if (line.startsWith(".I")) {
+          isText = false
+          if (text.nonEmpty) {
+            corpus = new CranfieldDocument(
+              id,
+              title.replace("\n", " "),
+              text.replace("\n", " ")
+            ) +: corpus
+            title = ""
+            text = ""
+          }
+          id = "[0-9]+".r.findFirstIn(line).get.toLong
+        }
+        if (isTitle)
+          title += line
+        if (isText)
+          text += line
+        else if (line.startsWith(".W"))
+          isText = true
+      }
+    source.close()
+    corpus
   }
 }
