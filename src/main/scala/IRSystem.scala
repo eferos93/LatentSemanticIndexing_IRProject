@@ -30,12 +30,12 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
   def answerQuery(textQuery: String, top: Int): Seq[(T, Double)] = {
     val queryVector = buildQueryVector(textQuery)
     V.map { case (documentVector, documentId) => (documentId, computeCosineSimilarity(queryVector, documentVector)) }
-      .orderBy($"_2".desc)
+      .orderBy($"_2".desc) //order by the second column (cosine sim. score) descending
       .take(top)
       .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score) }
   }
 
-  def query(query: String, top: Int = 5): Unit =
+  def query(query: String, top: Int = 10): Unit =
     println(answerQuery(query, top).mkString("\n"))
 
   def saveIrSystem(): Unit = {
@@ -76,7 +76,7 @@ object IRSystem {
 
   def readV(pathToV: String): Dataset[(Vector, Int)] =
     sparkSession.read.parquet(pathToV).orderBy($"_2").as[(Vector, Int)]
-      .map { case (vector, index) => (OldVectors.parse(vector.toString).asML, index) }
+//      .map { case (vector, index) => (OldVectors.parse(vector.toString).asML, index) }
 
   def readMatrix(pathToMatrix: String): Matrix = {
     val matrixDF = sparkSession.read.parquet(pathToMatrix).orderBy($"_2").as[(Vector, Int)]
