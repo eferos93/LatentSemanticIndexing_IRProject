@@ -6,7 +6,7 @@ import data_structures.Document
 import org.apache.spark.mllib.evaluation.RankingMetrics
 
 
-class Evaluator[T <: Document](rankingMetrics: RankingMetrics[Long]) {
+class Evaluator(rankingMetrics: RankingMetrics[Long]) {
   def meanAveragePrecision(): Double =
     rankingMetrics.meanAveragePrecision
 
@@ -15,7 +15,7 @@ class Evaluator[T <: Document](rankingMetrics: RankingMetrics[Long]) {
 }
 
 object Evaluator {
-  def apply[T <: Document](irSystem: IRSystem[T], queryRelevance: Array[(String, Array[Long])]): Evaluator[T] = {
+  def apply[T <: Document](irSystem: IRSystem[T], queryRelevance: Array[(String, Array[Long])]): Evaluator = {
     val relevantDocuments =
       queryRelevance
         .map {
@@ -23,6 +23,6 @@ object Evaluator {
             (irSystem.answerQuery(query, relevanceSet.length).map(_._1.id).toArray, relevanceSet)
         }.toSeq
 
-    new Evaluator[T](new RankingMetrics(sparkContext.parallelize(relevantDocuments)))
+    new Evaluator(new RankingMetrics(sparkContext.parallelize(relevantDocuments)))
   }
 }
