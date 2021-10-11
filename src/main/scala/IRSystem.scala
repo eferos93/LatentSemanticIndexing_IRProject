@@ -30,7 +30,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
   def answerQuery(textQuery: String, top: Int): Seq[(T, Double)] = {
     val queryVector = buildQueryVector(textQuery)
     V.map { case (documentVector, documentId) => (documentId, computeCosineSimilarity(queryVector, documentVector)) }
-      .orderBy($"_2".desc)
+      .orderBy($"_2".desc) //order by the second column (cosine sim. score) descending
       .take(top)
       .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score) }
   }
