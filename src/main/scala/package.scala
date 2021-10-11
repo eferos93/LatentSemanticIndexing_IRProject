@@ -125,48 +125,10 @@ package object project {
   }
 
   /**
-   * Data can be downloaded with the link below, but use the data in this repo, as there were some problems
-   *  with the file rlv-ass http://ir.dcs.gla.ac.uk/resources/test_collections/npl/
+   * data can be found here http://ir.dcs.gla.ac.uk/resources/test_collections/cran/
+   * @param path to the file containing the corpus
+   * @return dataset representation of the corpus
    */
-  def readNplCorpus(path: String = "data/npl/doc-text"): Dataset[NplDocument] = {
-    val df: DataFrame = sparkSession.read.option("lineSep", "   /\n").text(path)
-    val columnsSplit = split(df("value"), "\n")
-    df.withColumn("id", columnsSplit.getItem(0).cast(IntegerType) - 1) //I want indexes to start from 0 (for matrix)
-      .withColumn("description", columnsSplit.getItem(1))
-      .select("id", "description")
-      .as[NplDocument].persist(StorageLevel.MEMORY_ONLY_SER)
-  }
-
-  def readQueryAndRelevance(pathToQueries: String = "data/npl/query-text",
-                            pathToRelevance: String = "data/npl/rlv-ass"): Array[(String, Array[Long])] = {
-    var queryDf = sparkSession.read.option("lineSep", "/\n").text(pathToQueries)
-    var relevanceDf = sparkSession.read.option("lineSep", "/\n").text(pathToRelevance)
-    val queryColumnsSplit = split(queryDf("value"), "\n", 2)
-    val relevanceColumnSplit = split(relevanceDf("value"), "\n", 2)
-    queryDf =
-      queryDf
-        .withColumn("id", queryColumnsSplit.getItem(0).cast(IntegerType))
-        .withColumn("query", queryColumnsSplit.getItem(1))
-        .select("id", "query")
-    relevanceDf =
-      relevanceDf
-        .withColumn("queryId", relevanceColumnSplit.getItem(0).cast(IntegerType))
-        .withColumn("relevanceSet", relevanceColumnSplit.getItem(1))
-        .select("queryId", "relevanceSet")
-
-    val stringToList: UserDefinedFunction = udf { relevanceSet: String =>
-      // withFilter is a MonadicFilter, thus it doesn't return a new collection like filter(),
-      // but it restricts the domain of the subsequent transformations. In simple words, it is lazy
-      relevanceSet.split("[\n|\\s+]").withFilter(_.trim.nonEmpty).map(_.toInt)
-    }
-
-    queryDf
-      .join(relevanceDf, queryDf("id") === relevanceDf("queryId"))
-      .withColumn("relevanceList", stringToList($"relevanceSet"))
-      .selectExpr("query", "relevanceList AS relevanceSet")
-      .as[(String, Array[Long])]
-      .collect
-  }
 
   def readCranfield(path: String = "data/cranfield/cran.all.1400"): Dataset[CranfieldDocument] = {
     var corpus: Seq[CranfieldDocument] = Seq.empty
