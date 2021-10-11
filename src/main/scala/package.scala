@@ -224,7 +224,7 @@ package object project {
            queriesAndRelevanceSets =
              (
                text.replaceAll("\n", " "),
-               queryRelevance.where($"queryId" === queryId).first.getAs[Array[Long]](1)
+               queryRelevance.where($"queryId" === queryId).as[(String, Array[Long])].first._2
              ) +: queriesAndRelevanceSets
            queryId += 1
            text = ""
