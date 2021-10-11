@@ -10,7 +10,7 @@ import com.johnsnowlabs.nlp.annotator.{Stemmer, Tokenizer}
 import com.johnsnowlabs.nlp.annotators.StopWordsCleaner
 import com.johnsnowlabs.nlp.base.DocumentAssembler
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.{dayofweek, split, udf}
+import org.apache.spark.sql.functions.{collect_set, dayofweek, split, udf}
 import org.apache.spark.sql.types.IntegerType
 
 import scala.util.matching.Regex
@@ -168,7 +168,7 @@ package object project {
       .collect
   }
 
-  def readCranfield(path: String = "data/cranfield/cran.all.1400") = {
+  def readCranfield(path: String = "data/cranfield/cran.all.1400"): Dataset[CranfieldDocument] = {
     var corpus: Seq[CranfieldDocument] = Seq.empty
     var isTitle = false
     var isText = false
@@ -203,5 +203,38 @@ package object project {
     }
     source.close()
     corpus.toDS
+  }
+
+  def readQueryRelevanceCranfield(pathToRelevance: String = "data/cranfield/cranqrel",
+                                  pathToQueries: String = "data/cranfield/cran.qry"): Array[(String, Array[Long])] = {
+    val queryRelevance = readData(pathToRelevance, delimiter = " ", columnsToSelect = Option(Seq($"_c0", $"_c1")))
+      .withColumnRenamed("_c0", "queryId")
+      .withColumnRenamed("_c1", "relevantDocument")
+      .groupBy("queryId").agg(collect_set("relevantDocument").as("relevantDocuments"))
+
+    var queriesAndRelevanceSets: Array[(String, Array[Long])] = Array.empty
+    var isText = false
+    var text = ""
+    var queryId = 1
+    val source = Source.fromFile(pathToQueries)
+    source.getLines().foreach { line =>
+       if (line.startsWith(".I")) {
+         isText = false
+         if (text.nonEmpty) {
+           queriesAndRelevanceSets =
+             (
+               text.replaceAll("\n", " "),
+               queryRelevance.where($"queryId" === queryId).first.getAs[Array[Long]](1)
+             ) +: queriesAndRelevanceSets
+           queryId += 1
+           text = ""
+         }
+       }
+      if (isText)
+        text += line
+      else if (line.startsWith(".W"))
+        isText = true
+    }
+    queriesAndRelevanceSets
   }
 }
