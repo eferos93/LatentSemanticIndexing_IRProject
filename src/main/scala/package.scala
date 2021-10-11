@@ -128,7 +128,7 @@ package object project {
    * @return dataset representation of the corpus
    */
 
-  def readCranfield(path: String = "data/cranfield/cran.all.1400"): Dataset[CranfieldDocument] = {
+  def readCranfieldCorpus(path: String = "data/cranfield/cran.all.1400"): Dataset[CranfieldDocument] = {
     var corpus: Seq[CranfieldDocument] = Seq.empty
     var isTitle = false
     var isText = false
