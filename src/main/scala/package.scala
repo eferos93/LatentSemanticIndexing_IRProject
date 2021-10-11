@@ -168,7 +168,7 @@ package object project {
       .collect
   }
 
-  def readCranfield(path: String = "data/cranfield/cran.all.1400"): Seq[CranfieldDocument] = {
+  def readCranfield(path: String = "data/cranfield/cran.all.1400") = {
     var corpus: Seq[CranfieldDocument] = Seq.empty
     var isTitle = false
     var isText = false
@@ -176,32 +176,32 @@ package object project {
     var title = ""
     var id: Long = 0
     val source = Source.fromFile(path)
-    source
-      .getLines()
-      .foreach { line =>
-        if (line.startsWith(".A"))
-          isTitle = false
-        else if (line.startsWith(".I")) {
-          isText = false
-          if (text.nonEmpty) {
-            corpus = new CranfieldDocument(
-              id,
-              title.replace("\n", " "),
-              text.replace("\n", " ")
-            ) +: corpus
-            title = ""
-            text = ""
-          }
-          id = "[0-9]+".r.findFirstIn(line).get.toLong
+    source.getLines().foreach { line =>
+      if (line.startsWith(".A"))
+        isTitle = false
+      else if (line.startsWith(".I")) {
+        isText = false
+        if (text.nonEmpty) {
+          corpus = new CranfieldDocument(
+            id,
+            title.replaceAll("\n", " "),
+            text.replaceAll("\n", " ")
+          ) +: corpus
+          title = ""
+          text = ""
         }
-        if (isTitle)
-          title += line
-        if (isText)
-          text += line
-        else if (line.startsWith(".W"))
-          isText = true
+        id = "[0-9]+".r.findFirstIn(line).get.toLong
       }
+      if (isTitle)
+        title += line
+      if (isText)
+        text += line
+      if (line.startsWith(".T"))
+        isTitle = true
+      else if (line.startsWith(".W"))
+        isText = true
+    }
     source.close()
-    corpus
+    corpus.toDS
   }
 }
