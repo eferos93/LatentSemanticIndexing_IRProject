@@ -1,19 +1,17 @@
 package org.ir
 
 
-import org.apache.spark.ml.Pipeline
-import org.apache.spark.sql._
-import org.apache.spark.storage.StorageLevel
-import org.apache.spark.{SparkConf, SparkContext}
-import org.ir.project.data_structures.{CranfieldDocument, Movie, NplDocument}
 import com.johnsnowlabs.nlp.annotator.{Stemmer, Tokenizer}
 import com.johnsnowlabs.nlp.annotators.StopWordsCleaner
 import com.johnsnowlabs.nlp.base.DocumentAssembler
+import org.apache.spark.ml.Pipeline
+import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.{collect_set, dayofweek, split, udf}
-import org.apache.spark.sql.types.IntegerType
+import org.apache.spark.sql.functions.{collect_set, udf}
+import org.apache.spark.storage.StorageLevel
+import org.apache.spark.{SparkConf, SparkContext}
+import org.ir.project.data_structures.{CranfieldDocument, Movie}
 
-import scala.util.matching.Regex
 import scala.io.Source
 
 
