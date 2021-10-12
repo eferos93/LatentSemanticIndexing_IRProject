@@ -12,9 +12,11 @@ object RankOptimisation extends App {
   val queryAndRelevanceSets: Array[(String, Array[Long])] = readQueryRelevanceCranfield()
   (50 to 500 by 25).map { singularValues =>
     val irSystem = if (Files.exists(Paths.get("/index"))) {
-      IRSystem(corpus, singularValues, "index", tfidf = false)
-    } else {
+      println("index not found")
       IRSystem(corpus, singularValues, tfidf = false)
+    } else {
+      println("index found")
+      IRSystem(corpus, singularValues, "index", tfidf = false)
     }
     val eval = Evaluator(irSystem, queryAndRelevanceSets)
     (
