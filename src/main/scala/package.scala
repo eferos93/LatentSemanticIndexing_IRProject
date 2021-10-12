@@ -162,7 +162,7 @@ package object project {
         isText = true
     }
     source.close()
-    corpus.toDS
+    corpus.toDS.orderBy($"id").persist(StorageLevel.MEMORY_ONLY_SER)
   }
 
   def readQueryRelevanceCranfield(pathToRelevance: String = "data/cranfield/cranqrel",
