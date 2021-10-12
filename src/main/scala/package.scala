@@ -25,7 +25,7 @@ package object project {
 
   lazy val sparkSession: SparkSession = SparkSession.builder.config(sparkConfiguration).getOrCreate()
   lazy val sparkContext: SparkContext = sparkSession.sparkContext
-  sparkContext.setLogLevel("OFF")
+  sparkContext.setLogLevel("WARN")
 
   import sparkSession.implicits._
 
@@ -38,7 +38,7 @@ package object project {
     result
   }
 
- // function adapted to a column function: see its application at line 64
+ // function adapted to a column function: see its application at line 5c4
   val normaliseText: UserDefinedFunction = udf { text: String =>
     //    pattern is:
     //    - ^\\w : not a word
@@ -146,7 +146,7 @@ package object project {
             id,
             title.replaceAll("\n", " "),
             text.replaceAll("\n", " ")
-          ) +: corpus
+          ) +: corpus //prepend to corpus
           title = ""
           text = ""
         }
@@ -184,8 +184,9 @@ package object project {
            queriesAndRelevanceSets =
              (
                text.replaceAll("\n", " "),
+               //get the relevance set associated to the query
                queryRelevance.where($"queryId" === queryId).as[(String, Array[Long])].first._2
-             ) +: queriesAndRelevanceSets
+             ) +: queriesAndRelevanceSets //prepend to queriesAndRelevanceSets
            queryId += 1
            text = ""
          }
