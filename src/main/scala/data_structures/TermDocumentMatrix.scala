@@ -12,6 +12,7 @@ import org.apache.spark.sql.Dataset
 
 import scala.math.log
 
+// trait is like interface in java
 trait WordWeight {
   def weight(args: Map[String, Long]): Double
 }
@@ -26,6 +27,7 @@ case class TermFrequencyWeighting() extends WordWeight {
     args("termFrequency").toDouble
 }
 
+
 class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRowMatrix) {
   def computeSVD(numberOfSingularValues: Int): SingularValueDecomposition[IndexedRowMatrix, Matrix] =
     matrix.computeSVD(numberOfSingularValues, computeU = true)
@@ -33,6 +35,8 @@ class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRo
   def getVocabulary: Dataset[String] = invertedIndex.dictionary.select("term").distinct.as[String]
 }
 
+//here we define factory methods (apply)
+//it is possible to invoke them implicitly, e.g. TermDocumentMatrix(corpus, tfidf = true) will invoke the first apply below
 object TermDocumentMatrix {
   def apply[T <: Document](corpus: Dataset[T], tfidf: Boolean): TermDocumentMatrix = 
     computeTermDocumentMatrix(InvertedIndex(corpus), getWeigher(tfidf))
@@ -47,8 +51,8 @@ object TermDocumentMatrix {
                                                          wordWeight: T): TermDocumentMatrix = {
     val numberOfDocuments = invertedIndex.numberOfDocuments
     val matrixEntries = invertedIndex.dictionary
-      .as[(String, Long, Long)].rdd // RDD[(term, docId, termFrequency)]
-      .groupBy(_._1) // group by term
+      .as[(String, Long, Long)].rdd // RDD[(term, docId, termFreq)]
+      .groupBy(_._1) // group by term: RDD[term, Iterable[(docId, termFreq)]]
       .sortByKey() // sort by term, as ordering is lost with grouping
       .zipWithIndex // add term index
       .flatMap {
