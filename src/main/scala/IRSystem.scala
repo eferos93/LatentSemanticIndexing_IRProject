@@ -88,26 +88,25 @@ object IRSystem {
     val termDocumentMatrix = TermDocumentMatrix(pathToIndex, tfidf)
     initializeIRSystem(corpus, termDocumentMatrix, numberOfSingularValues)
   }
-  //TODO: fix
-//  def apply[T <: Document](corpus: Dataset[T], pathToIndex: String, pathToMatrices: String): IRSystem[T] = {
-//    val U = readMatrix(s"$pathToMatrices/U/").toDense
-//    val V = readV(s"$pathToMatrices/V/")
-//    val inverseSigma = readMatrix(s"$pathToMatrices/s/")
-//    val index = sparkSession.read.option("header", "true").parquet(pathToIndex)
-//    new IRSystem(corpus,
-//      index.select("term").distinct.as[String].persist(StorageLevel.MEMORY_ONLY_SER),
-//      U, inverseSigma, V
-//    )
-//  }
+  def apply[T <: Document](corpus: Dataset[T], pathToIndex: String, pathToMatrices: String): IRSystem[T] = {
+    val U = readMatrix(s"$pathToMatrices/U/")
+    val V = readV(s"$pathToMatrices/V/")
+    val inverseSigma = readMatrix(s"$pathToMatrices/s/")
+    val index = sparkSession.read.option("header", "true").parquet(pathToIndex)
+    new IRSystem(corpus,
+      index.select("term").distinct.as[String].persist(StorageLevel.MEMORY_ONLY_SER),
+      U, inverseSigma, V
+    )
+  }
 
   def readV(pathToV: String): Dataset[(Vector, Int)] =
     sparkSession.read.parquet(pathToV).orderBy($"_2").as[(Vector, Int)]
 
-  def readMatrix(pathToMatrix: String): Matrix = {
-    val matrixDF = sparkSession.read.parquet(pathToMatrix).orderBy($"_2").as[(Vector, Int)]
+  def readMatrix(pathToMatrix: String): BlockMatrix = {
+    val matrixDF = sparkSession.read.parquet(pathToMatrix).as[(Vector, Int)]
       .map { case (vector, index) => IndexedRow(index, OldVectors.parse(vector.toString)) }
     new IndexedRowMatrix(matrixDF.rdd, matrixDF.count, matrixDF.first.vector.size)
-      .toBlockMatrix.toLocalMatrix.asML.toDense
+      .toBlockMatrix
   }
 
   def initializeIRSystem[T <: Document](corpus: Dataset[T],
