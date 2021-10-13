@@ -32,7 +32,7 @@ class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRo
   def computeSVD(numberOfSingularValues: Int): SingularValueDecomposition[IndexedRowMatrix, Matrix] =
     matrix.computeSVD(numberOfSingularValues, computeU = true)
 
-  def getVocabulary: Dataset[String] = invertedIndex.dictionary.select("term").distinct.as[String]
+  def getVocabulary: Dataset[String] = invertedIndex.dictionary.select("term").distinct.orderBy("term").as[String]
 }
 
 //here we define factory methods (apply)
