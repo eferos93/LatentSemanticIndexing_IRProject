@@ -1,6 +1,6 @@
 package org.ir.project
 
-import data_structures.CranfieldDocument
+import data_structures.NplDocument
 import evaluator.Evaluator
 
 import org.apache.spark.sql.Dataset
@@ -8,7 +8,7 @@ import org.apache.spark.sql.Dataset
 import java.nio.file.{Files, Paths}
 
 object RankOptimisation extends App {
-  def evaluation(corpus: Dataset[CranfieldDocument],
+  def evaluation(corpus: Dataset[NplDocument],
                  queryAndRelevanceSets: Array[(String, Array[Long])],
                  tfidf: Boolean) = {
     val results =
@@ -41,8 +41,8 @@ object RankOptimisation extends App {
     results
   }
 
-  val corpus: Dataset[CranfieldDocument] = readCranfieldCorpus()
-  val queryAndRelevanceSets: Array[(String, Array[Long])] = readQueryRelevanceCranfield()
+  val corpus: Dataset[NplDocument] = readNplCorpus()
+  val queryAndRelevanceSets: Array[(String, Array[Long])] = readQueryAndRelevance()
 
   println("TESTING WITH TF WEIGHT")
   val resTfIdf = evaluation(corpus, queryAndRelevanceSets, tfidf = false)
