@@ -3,9 +3,9 @@ package org.ir.project
 import data_structures.{Document, TermDocumentMatrix}
 import sparkSession.implicits._
 
-import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Matrix, Vector, Vectors}
-import org.apache.spark.mllib.linalg.distributed.{BlockMatrix, IndexedRow, IndexedRowMatrix, RowMatrix}
-import org.apache.spark.mllib.linalg.{Matrices => OldMatrices, Vector => OldVector, Vectors => OldVectors}
+import org.apache.spark.ml.linalg.{DenseVector, Vector, Vectors}
+import org.apache.spark.mllib.linalg.distributed.{BlockMatrix, IndexedRow, IndexedRowMatrix}
+import org.apache.spark.mllib.linalg.{Matrices => OldMatrices, Vectors => OldVectors}
 import org.apache.spark.sql.{Dataset, SaveMode}
 import org.apache.spark.storage.StorageLevel
 
