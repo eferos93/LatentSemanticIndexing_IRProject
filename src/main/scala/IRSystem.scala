@@ -76,7 +76,6 @@ object IRSystem {
 
   def readV(pathToV: String): Dataset[(Vector, Int)] =
     sparkSession.read.parquet(pathToV).orderBy($"_2").as[(Vector, Int)]
-//      .map { case (vector, index) => (OldVectors.parse(vector.toString).asML, index) }
 
   def readMatrix(pathToMatrix: String): Matrix = {
     val matrixDF = sparkSession.read.parquet(pathToMatrix).orderBy($"_2").as[(Vector, Int)]
@@ -91,8 +90,8 @@ object IRSystem {
     val singularValueDecomposition = termDocumentMatrix.computeSVD(numberOfSingularValues)
     val UasDense = singularValueDecomposition.U.toBlockMatrix.toLocalMatrix.asML.toDense
     val V = singularValueDecomposition.V.asML.rowIter.toSeq
-      //.zipWithIndex.toDS.persist(StorageLevel.MEMORY_ONLY_SER)
-      .zip(corpus.map(_.id.toInt).collect).toDS.persist(StorageLevel.MEMORY_ONLY_SER)
+      .zip(corpus.map(_.id.toInt).collect) //zip with the documentIDs
+      .toDS.persist(StorageLevel.MEMORY_ONLY_SER)
     val inverseSigma = Matrices.diag(new DenseVector(singularValueDecomposition.s.toArray.map(1/_)))
     new IRSystem(corpus,
       termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
