@@ -118,7 +118,7 @@ package object project {
       .join(descriptions, titles("id") === descriptions("movieId"))
       .select( "title", "description")
       .orderBy("title").rdd
-      .zipWithIndex.map { case (row, id) => (id, row.getString(0), row.getString(1)) }
+      .zipWithIndex.map { case (Row(title: String, description: String), id) => (id, title, description) }
       .toDF("id", "title", "description")
       .as[Movie].persist(StorageLevel.MEMORY_ONLY_SER)
   }
