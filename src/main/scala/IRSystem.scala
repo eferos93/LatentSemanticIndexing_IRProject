@@ -64,15 +64,15 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     println(answerQuery(query, top).mkString("\n"))
 
   /**
-   * save the matrices U, V, sigma TODO: fix
+   * save the matrices U, V, sigma
    */
-//  def saveIrSystem(): Unit = {
-//    sparkSession.createDataset(U.rowIter.toSeq.zipWithIndex)
-//      .write.mode(SaveMode.Overwrite).parquet("matrices/U")
-//    V.write.parquet("matrices/V")
-//    sparkSession.createDataset(inverseSigma.rowIter.toSeq.zipWithIndex)
-//      .write.mode(SaveMode.Overwrite).parquet("matrices/s")
-//  }
+  def saveIrSystem(): Unit = {
+    sparkSession.createDataset(U.toLocalMatrix.asML.rowIter.toSeq.zipWithIndex)
+      .write.mode(SaveMode.Overwrite).parquet("matrices/U")
+    V.write.parquet("matrices/V")
+    sparkSession.createDataset(inverseSigma.toLocalMatrix.asML.rowIter.toSeq.zipWithIndex)
+      .write.mode(SaveMode.Overwrite).parquet("matrices/s")
+  }
 }
 
 object IRSystem {
