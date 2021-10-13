@@ -10,7 +10,7 @@ class Evaluator(rankingMetrics: RankingMetrics[Long]) {
   def meanAveragePrecision(): Double =
     rankingMetrics.meanAveragePrecision
 
-  def normalisedDiscountedCumulativeGainAt(k: Int): Double =
+  def ndcgAt(k: Int): Double =
     rankingMetrics.ndcgAt(k)
 }
 
