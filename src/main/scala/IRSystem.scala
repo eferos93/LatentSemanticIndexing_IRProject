@@ -15,7 +15,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 
   /**
    * Map a queryVector to the lower dimensional space
-   * @param queryVector
+   * @param queryVector vector representation of the query
    * @return vector representing the queryVector in a Lower dimensional space
    */
   def mapQueryVector(queryVector: Vector): DenseVector =
@@ -24,7 +24,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 
   /**
    * Given a text query, it cleans it and convert it to vector representation
-   * @param textQuery
+   * @param textQuery text query
    * @return vector representation of the query
    */
   def buildQueryVector(textQuery: String): Vector = {
@@ -40,7 +40,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 
   /**
    * Given a text query, gets the query vector
-   * @param textQuery
+   * @param textQuery plain text query
    * @param top how many documents with the highest score we want to keep
    * @return Sequence of (document, score)
    */
@@ -65,8 +65,6 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     sparkSession.createDataset(inverseSigma.rowIter.toSeq.zipWithIndex)
       .write.mode(SaveMode.Overwrite).parquet("matrices/s")
   }
-
-
 }
 
 object IRSystem {
