@@ -110,90 +110,15 @@ package object project {
                       filepathDescriptions: String = "data/MovieSummaries/plot_summaries.txt"): Dataset[Movie] = {
     val titles =
       readData(filepathTitles, columnsToSelect = Option(Seq($"_c0", $"_c2")))
-      .toDF("id", "title")
+      .toDF("internalId", "title")
     val descriptions = readData(filepathDescriptions).toDF("movieId", "description")
 
     titles
       .join(descriptions, titles("id") === descriptions("movieId"))
-      .select("id", "title", "description")
-      .orderBy("id")
+      .select( "title", "description")
+      .orderBy("title").rdd
+      .zipWithIndex.map { case (row, id) => (id, row.getString(0), row.getString(1)) }
+      .toDF("id", "title", "description")
       .as[Movie].persist(StorageLevel.MEMORY_ONLY_SER)
-  }
-
-  /**
-   * data can be found here http://ir.dcs.gla.ac.uk/resources/test_collections/cran/
-   * @param path to the file containing the corpus
-   * @return dataset representation of the corpus
-   */
-
-  def readCranfieldCorpus(path: String = "data/cranfield/cran.all.1400"): Dataset[CranfieldDocument] = {
-    var corpus: Seq[CranfieldDocument] = Seq.empty
-    var isTitle = false
-    var isText = false
-    var text = ""
-    var title = ""
-    var id: Long = 0
-    val source = Source.fromFile(path)
-    source.getLines().foreach { line =>
-      if (line.startsWith(".A"))
-        isTitle = false
-      else if (line.startsWith(".I")) {
-        isText = false
-        if (text.nonEmpty) {
-          corpus = new CranfieldDocument(
-            id,
-            title.replaceAll("\n", " "),
-            text.replaceAll("\n", " ")
-          ) +: corpus //prepend to corpus
-          title = ""
-          text = ""
-        }
-        id = "[0-9]+".r.findFirstIn(line).get.toLong
-      }
-      if (isTitle)
-        title += line
-      if (isText)
-        text += line
-      if (line.startsWith(".T"))
-        isTitle = true
-      else if (line.startsWith(".W"))
-        isText = true
-    }
-    source.close()
-    corpus.toDS.orderBy($"id").persist(StorageLevel.MEMORY_ONLY_SER)
-  }
-
-  def readQueryRelevanceCranfield(pathToRelevance: String = "data/cranfield/cranqrel",
-                                  pathToQueries: String = "data/cranfield/cran.qry"): Array[(String, Array[Long])] = {
-    val queryRelevance = readData(pathToRelevance, delimiter = " ", columnsToSelect = Option(Seq($"_c0", $"_c1")))
-      .withColumnRenamed("_c0", "queryId")
-      .withColumnRenamed("_c1", "relevantDocument")
-      .groupBy("queryId").agg(collect_set("relevantDocument").as("relevantDocuments"))
-
-    var queriesAndRelevanceSets: Array[(String, Array[Long])] = Array.empty
-    var isText = false
-    var text = ""
-    var queryId = 1
-    val source = Source.fromFile(pathToQueries)
-    source.getLines().foreach { line =>
-       if (line.startsWith(".I")) {
-         isText = false
-         if (text.nonEmpty) {
-           queriesAndRelevanceSets =
-             (
-               text.replaceAll("\n", " "),
-               //get the relevance set associated to the query
-               queryRelevance.where($"queryId" === queryId).as[(String, Array[Long])].first._2
-             ) +: queriesAndRelevanceSets //prepend to queriesAndRelevanceSets
-           queryId += 1
-           text = ""
-         }
-       }
-      if (isText)
-        text += line
-      else if (line.startsWith(".W"))
-        isText = true
-    }
-    queriesAndRelevanceSets
   }
 }
