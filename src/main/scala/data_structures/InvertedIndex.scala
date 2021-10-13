@@ -9,6 +9,8 @@ import org.apache.spark.storage.StorageLevel
 
 class InvertedIndex(val dictionary: DataFrame, val numberOfDocuments: Long)
 
+
+//factory methods here (apply)
 object InvertedIndex {
   def apply[T <: Document](corpus: Dataset[T]): InvertedIndex = {
     val index: DataFrame =
@@ -19,7 +21,7 @@ object InvertedIndex {
         .where($"term" =!= "") // seems like there are some tokens that are empty, even though Tokenizer should remove them
         .persist(StorageLevel.MEMORY_ONLY_SER)
 
-    index.write.mode(SaveMode.Ignore)
+    index.write.mode(SaveMode.Ignore) //ignore if already present
       .option("header", "true")
       .parquet("index/")
     new InvertedIndex(index, corpus.count)

@@ -13,9 +13,20 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
                               val vocabulary: Dataset[String],
                               val U: DenseMatrix, val inverseSigma: Matrix, val V: Dataset[(Vector, Int)]) extends Serializable {
 
+  /**
+   * Map a queryVector to the lower dimensional space
+   * @param queryVector
+   * @return vector representing the queryVector in a Lower dimensional space
+   */
   def mapQueryVector(queryVector: Vector): DenseVector =
     inverseSigma.multiply(U.transpose).multiply(queryVector)
 
+
+  /**
+   * Given a text query, it cleans it and convert it to vector representation
+   * @param textQuery
+   * @return vector representation of the query
+   */
   def buildQueryVector(textQuery: String): Vector = {
     val tokens = pipelineClean(
       List(textQuery).toDF("description"), extraColumns = Seq.empty
@@ -27,6 +38,12 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
   def computeCosineSimilarity(firstVector: Vector, secondVector: Vector): Double =
     firstVector.dot(secondVector) / (Vectors.norm(firstVector, 2.0) * Vectors.norm(secondVector, 2.0))
 
+  /**
+   * Given a text query, gets the query vector
+   * @param textQuery
+   * @param top how many documents with the highest score we want to keep
+   * @return Sequence of (document, score)
+   */
   def answerQuery(textQuery: String, top: Int): Seq[(T, Double)] = {
     val queryVector = buildQueryVector(textQuery)
     V.map { case (documentVector, documentId) => (documentId, computeCosineSimilarity(queryVector, documentVector)) }
@@ -38,6 +55,9 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
   def query(query: String, top: Int = 10): Unit =
     println(answerQuery(query, top).mkString("\n"))
 
+  /**
+   * save the matrices U, V, sigma
+   */
   def saveIrSystem(): Unit = {
     sparkSession.createDataset(U.rowIter.toSeq.zipWithIndex)
       .write.mode(SaveMode.Overwrite).parquet("matrices/U")
