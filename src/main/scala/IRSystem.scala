@@ -39,7 +39,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
           OldVectors.dense(tokens.count(_.equals(word)).toDouble)
         )
     }
-    val columnVector = new IndexedRowMatrix(queryVector, vocabulary.count, 1)
+    val columnVector = new IndexedRowMatrix(queryVector.persist(StorageLevel.MEMORY_ONLY_SER), vocabulary.count, 1)
     mapQueryVector(columnVector.toBlockMatrix)
   }
 
@@ -124,6 +124,6 @@ object IRSystem {
     val inverseSigmaAsBlock = new IndexedRowMatrix(rddMatrix, numberOfSingularValues, numberOfSingularValues).toBlockMatrix
     new IRSystem(corpus,
       termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
-      UasBlock, inverseSigmaAsBlock, V)
+      UasBlock.cache, inverseSigmaAsBlock.cache, V)
   }
 }
