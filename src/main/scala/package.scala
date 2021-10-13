@@ -110,15 +110,16 @@ package object project {
                       filepathDescriptions: String = "data/MovieSummaries/plot_summaries.txt"): Dataset[Movie] = {
     val titles =
       readData(filepathTitles, columnsToSelect = Option(Seq($"_c0", $"_c2")))
-      .toDF("internalId", "title")
-    val descriptions = readData(filepathDescriptions).toDF("internalId", "description")
+      .toDF("id", "title")
+    val descriptions = readData(filepathDescriptions).toDF("movieId", "description")
 
     titles
-      .join(descriptions, titles("internalId") === descriptions("internalId"))
-      .select("title", "description")
-      .orderBy("title").rdd
-      .zipWithIndex.map { case (row, documentId) => (documentId, row.getString(0), row.getString(1)) }
-      .toDF("id", "title", "description")
+      .join(descriptions, titles("id") === descriptions("movieId"))
+      .select("id", "title", "description")
+      .orderBy("id")
+      //.rdd
+//      .zipWithIndex.map { case (row, documentId) => (documentId, row.getString(0), row.getString(1)) }
+//      .toDF("id", "title", "description")
       .as[Movie].persist(StorageLevel.MEMORY_ONLY_SER)
   }
 
