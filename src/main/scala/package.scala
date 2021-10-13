@@ -7,13 +7,11 @@ import com.johnsnowlabs.nlp.base.DocumentAssembler
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.{collect_set, split, udf}
+import org.apache.spark.sql.functions.{split, udf}
 import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ir.project.data_structures.{Movie, NplDocument}
-
-import scala.io.Source
 
 
 
