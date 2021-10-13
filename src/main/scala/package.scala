@@ -107,7 +107,7 @@ package object project {
     val descriptions = readData(filepathDescriptions).toDF("movieId", "description")
 
     titles
-      .join(descriptions, titles("id") === descriptions("movieId"))
+      .join(descriptions, titles("internalId") === descriptions("movieId"))
       .select("title", "description")
       .orderBy("title").rdd // covert it to RDD[Row]
       .zipWithIndex.map { case (Row(title: String, description: String), id) => (id, title, description) }

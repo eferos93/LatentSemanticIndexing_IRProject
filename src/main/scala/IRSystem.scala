@@ -4,22 +4,23 @@ import data_structures.{Document, TermDocumentMatrix}
 import sparkSession.implicits._
 
 import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Matrices, Matrix, Vector, Vectors}
-import org.apache.spark.mllib.linalg.distributed.{IndexedRow, IndexedRowMatrix}
-import org.apache.spark.mllib.linalg.{Vectors => OldVectors}
+import org.apache.spark.mllib.linalg.distributed.{BlockMatrix, IndexedRow, IndexedRowMatrix, RowMatrix}
+import org.apache.spark.mllib.linalg.{Matrices => OldMatrices, Vector => OldVector, Vectors => OldVectors}
 import org.apache.spark.sql.{Dataset, SaveMode}
 import org.apache.spark.storage.StorageLevel
 
 class IRSystem[T <: Document](val corpus: Dataset[T],
                               val vocabulary: Dataset[String],
-                              val U: DenseMatrix, val inverseSigma: Matrix, val V: Dataset[(Vector, Int)]) extends Serializable {
+                              val U: BlockMatrix, val inverseSigma: BlockMatrix, val V: Dataset[(Vector, Int)]) extends Serializable {
 
   /**
    * Map a queryVector to the lower dimensional space
    * @param queryVector vector representation of the query
    * @return vector representing the queryVector in a Lower dimensional space
    */
-  def mapQueryVector(queryVector: Vector): DenseVector =
-    inverseSigma.multiply(U.transpose).multiply(queryVector)
+  def mapQueryVector(queryVector: BlockMatrix): DenseVector =
+    inverseSigma.multiply(U.transpose).multiply(queryVector) // here we end up with a column vector represented as a BlockMatrix
+      .toLocalMatrix.asML.colIter.toSeq.head.toDense // convert the BlockMatrix to a local Vector
 
 
   /**
@@ -31,8 +32,15 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     val tokens = pipelineClean(
       List(textQuery).toDF("description"), extraColumns = Seq.empty
     ).first.getAs[Seq[String]](0) // after cleaning, we have a df with only one row: we get the first element which will be as Row type and get its content as Seq[String]
-    val queryVector = Vectors.dense(vocabulary.map(word => tokens.count(_.equals(word)).toDouble).collect)
-    mapQueryVector(queryVector)
+    val queryVector = vocabulary.rdd.zipWithIndex.map {
+      case (word, index) =>
+        IndexedRow(
+          index,
+          OldVectors.dense(tokens.count(_.equals(word)).toDouble)
+        )
+    }
+    val columnVector = new IndexedRowMatrix(queryVector, vocabulary.count, 1)
+    mapQueryVector(columnVector.toBlockMatrix)
   }
 
   def computeCosineSimilarity(firstVector: Vector, secondVector: Vector): Double =
@@ -56,15 +64,15 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     println(answerQuery(query, top).mkString("\n"))
 
   /**
-   * save the matrices U, V, sigma
+   * save the matrices U, V, sigma TODO: fix
    */
-  def saveIrSystem(): Unit = {
-    sparkSession.createDataset(U.rowIter.toSeq.zipWithIndex)
-      .write.mode(SaveMode.Overwrite).parquet("matrices/U")
-    V.write.parquet("matrices/V")
-    sparkSession.createDataset(inverseSigma.rowIter.toSeq.zipWithIndex)
-      .write.mode(SaveMode.Overwrite).parquet("matrices/s")
-  }
+//  def saveIrSystem(): Unit = {
+//    sparkSession.createDataset(U.rowIter.toSeq.zipWithIndex)
+//      .write.mode(SaveMode.Overwrite).parquet("matrices/U")
+//    V.write.parquet("matrices/V")
+//    sparkSession.createDataset(inverseSigma.rowIter.toSeq.zipWithIndex)
+//      .write.mode(SaveMode.Overwrite).parquet("matrices/s")
+//  }
 }
 
 object IRSystem {
@@ -80,17 +88,17 @@ object IRSystem {
     val termDocumentMatrix = TermDocumentMatrix(pathToIndex, tfidf)
     initializeIRSystem(corpus, termDocumentMatrix, numberOfSingularValues)
   }
-
-  def apply[T <: Document](corpus: Dataset[T], pathToIndex: String, pathToMatrices: String): IRSystem[T] = {
-    val U = readMatrix(s"$pathToMatrices/U/").toDense
-    val V = readV(s"$pathToMatrices/V/")
-    val inverseSigma = readMatrix(s"$pathToMatrices/s/")
-    val index = sparkSession.read.option("header", "true").parquet(pathToIndex)
-    new IRSystem(corpus,
-      index.select("term").distinct.as[String].persist(StorageLevel.MEMORY_ONLY_SER),
-      U, inverseSigma, V
-    )
-  }
+  //TODO: fix
+//  def apply[T <: Document](corpus: Dataset[T], pathToIndex: String, pathToMatrices: String): IRSystem[T] = {
+//    val U = readMatrix(s"$pathToMatrices/U/").toDense
+//    val V = readV(s"$pathToMatrices/V/")
+//    val inverseSigma = readMatrix(s"$pathToMatrices/s/")
+//    val index = sparkSession.read.option("header", "true").parquet(pathToIndex)
+//    new IRSystem(corpus,
+//      index.select("term").distinct.as[String].persist(StorageLevel.MEMORY_ONLY_SER),
+//      U, inverseSigma, V
+//    )
+//  }
 
   def readV(pathToV: String): Dataset[(Vector, Int)] =
     sparkSession.read.parquet(pathToV).orderBy($"_2").as[(Vector, Int)]
@@ -106,13 +114,17 @@ object IRSystem {
                                         termDocumentMatrix: TermDocumentMatrix,
                                         numberOfSingularValues: Int): IRSystem[T] = {
     val singularValueDecomposition = termDocumentMatrix.computeSVD(numberOfSingularValues)
-    val UasDense = singularValueDecomposition.U.toBlockMatrix.toLocalMatrix.asML.toDense
+    val UasBlock = singularValueDecomposition.U.toBlockMatrix
     val V = singularValueDecomposition.V.asML.rowIter.toSeq
       .zipWithIndex //zip with the documentIDs
       .toDS.persist(StorageLevel.MEMORY_ONLY_SER)
-    val inverseSigma = Matrices.diag(new DenseVector(singularValueDecomposition.s.toArray.map(1/_)))
+    val inverseSigmaAsLocal = OldMatrices.diag(OldVectors.dense(singularValueDecomposition.s.toArray.map(1/_)))
+    val rddMatrix = sparkContext.parallelize(inverseSigmaAsLocal.rowIter.zipWithIndex.toSeq).map {
+      case (row, index) => IndexedRow(index, row)
+    }
+    val inverseSigmaAsBlock = new IndexedRowMatrix(rddMatrix, numberOfSingularValues, numberOfSingularValues).toBlockMatrix
     new IRSystem(corpus,
       termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
-      UasDense, inverseSigma, V)
+      UasBlock, inverseSigmaAsBlock, V)
   }
 }
