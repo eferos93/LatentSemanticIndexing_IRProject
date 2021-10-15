@@ -44,6 +44,8 @@ package object project {
     val filteredCorpus = dataSet.withColumn("normalisedDescription", normaliseText(columnToClean))
 
     // we define some transformers
+    // as the tokenizer, stmmer and stop words remover are from the spark.nlp library
+    // we need to convert the document with the below DocumentAssembler
     val documentAssembler = new DocumentAssembler()
       .setInputCol("normalisedDescription")
       .setOutputCol("text")
@@ -157,8 +159,8 @@ package object project {
     // join the two dataframes and return a Array of tuples (query, relevanceSet)
     queryDf
       .join(relevanceDf, queryDf("id") === relevanceDf("queryId"))
-      .withColumn("relevanceList", stringToList($"relevanceSet"))
-      .selectExpr("query", "relevanceList AS relevanceSet")
+      .withColumn("relevanceArray", stringToList($"relevanceSet"))
+      .select("query", "relevanceArray")
       .as[(String, Array[Long])].collect
   }
 }
