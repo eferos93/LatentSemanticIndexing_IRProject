@@ -60,7 +60,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
       .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score) }
   }
 
-  def query(query: String, top: Int = 10): Unit =
+  def query(query: String, top: Int = 5): Unit =
     println(answerQuery(query, top).mkString("\n"))
 
   /**
@@ -116,7 +116,7 @@ object IRSystem {
     val UasBlock = singularValueDecomposition.U.toBlockMatrix
     val V = singularValueDecomposition.V.asML.rowIter.toSeq
       .zipWithIndex //zip with the documentIDs
-      .toDS.persist(StorageLevel.MEMORY_ONLY_SER)
+      .toDS.persist(StorageLevel.MEMORY_ONLY_SER) // convert to DataSet[(Vector, Int)]
     val inverseSigmaAsLocal = OldMatrices.diag(OldVectors.dense(singularValueDecomposition.s.toArray.map(1/_)))
     val rddMatrix = sparkContext.parallelize(inverseSigmaAsLocal.rowIter.zipWithIndex.toSeq).map {
       case (row, index) => IndexedRow(index, row)
