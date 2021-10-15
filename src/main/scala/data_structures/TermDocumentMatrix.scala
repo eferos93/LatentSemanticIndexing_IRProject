@@ -52,14 +52,14 @@ object TermDocumentMatrix {
     val numberOfDocuments = invertedIndex.numberOfDocuments
     val matrixEntries = invertedIndex.dictionary
       .as[(String, Long, Long)].rdd // RDD[(term, docId, termFreq)]
-      .groupBy(_._1) // group by term: RDD[term, Iterable[(docId, termFreq)]]
+      .groupBy(_._1) // group by term: RDD[term, Iterable[(term, docId, termFreq)]]
       .sortByKey() // sort by term, as ordering is lost with grouping
-      .zipWithIndex // add term index
+      .zipWithIndex // add term index: RDD[((term, Iterable[(term, docId, termFreq)]), termIndex)]
       .flatMap {
-        case ((_, docIdsAndFrequencies), termIndex) =>
+        case ((_, docIdsAndFrequencies: Iterable[(String, Long, Long)]), termIndex: Long) =>
           val documentFrequency = docIdsAndFrequencies.toSeq.length
           docIdsAndFrequencies.map {
-            case (_, documentId, termFrequency) =>
+            case (_, documentId: Long, termFrequency: Long) =>
               val args = Map[String, Long](
                 "termFrequency" -> termFrequency,
                 "numberOfDocuments" -> numberOfDocuments,
@@ -71,7 +71,7 @@ object TermDocumentMatrix {
                 wordWeight.weight(args)
               )
           }
-      }
+      } // here we end up with a RDD[MatrixEntry]
     new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries).toIndexedRowMatrix)
   }
 }
