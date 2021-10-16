@@ -124,6 +124,6 @@ object IRSystem {
     val inverseSigmaAsBlock = new IndexedRowMatrix(rddMatrix, numberOfSingularValues, numberOfSingularValues).toBlockMatrix
     new IRSystem(corpus,
       termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
-      UasBlock.cache, inverseSigmaAsBlock.cache, V)
+      UasBlock, inverseSigmaAsBlock, V)
   }
 }
