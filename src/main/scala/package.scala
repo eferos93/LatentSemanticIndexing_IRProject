@@ -20,6 +20,8 @@ package object project {
     .setAppName("Latent Semantic Indexing")
     .setMaster("local[*]")
     .set("spark.cores.max", Runtime.getRuntime.availableProcessors.toString)
+    .set("spark.executor.memory", "6g")
+    .set("spark.driver.memory", "6g")
 
   lazy val sparkSession: SparkSession = SparkSession.builder.config(sparkConfiguration).getOrCreate()
   lazy val sparkContext: SparkContext = sparkSession.sparkContext
