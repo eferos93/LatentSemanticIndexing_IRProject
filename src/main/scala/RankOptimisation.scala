@@ -21,6 +21,7 @@ object RankOptimisation extends App {
           println("index not found")
           IRSystem(corpus, singularValues, tfidf = tfidf)
         }
+
         val eval = Evaluator(irSystem, queryAndRelevanceSets)
         (
           singularValues,
@@ -30,9 +31,9 @@ object RankOptimisation extends App {
       }
 
     results.map {
-      case (k, map, ndcg) =>
+      case (singularValues, map, ndcg) =>
         (
-          s"n of singular values: $k",
+          s"n of singular values: $singularValues",
           s"MAP: $map",
           s"ndcg@ 5, 10, 20, 40: ${ndcg.toString}"
         )
@@ -45,7 +46,7 @@ object RankOptimisation extends App {
   val queryAndRelevanceSets: Array[(String, Array[Long])] = readQueryAndRelevance()
 
   println("TESTING WITH TF WEIGHT")
-  val resTfIdf = evaluation(corpus, queryAndRelevanceSets, tfidf = false)
+  val resTf = evaluation(corpus, queryAndRelevanceSets, tfidf = false)
   println("TESTING WITH TFIDF WEIGHT")
-  val resTf = evaluation(corpus, queryAndRelevanceSets, tfidf = true)
+  val resTfIdf = evaluation(corpus, queryAndRelevanceSets, tfidf = true)
 }
