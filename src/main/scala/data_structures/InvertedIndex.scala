@@ -3,7 +3,7 @@ package data_structures
 
 import sparkSession.implicits._
 
-import org.apache.spark.sql.functions.explode
+import org.apache.spark.sql.functions.{collect_list, explode, struct}
 import org.apache.spark.sql.{DataFrame, Dataset, SaveMode}
 import org.apache.spark.storage.StorageLevel
 
@@ -17,8 +17,11 @@ object InvertedIndex {
       pipelineClean(corpus)
         .select($"id" as "documentId", explode($"tokens") as "term") // explode creates a new row for each element in the given array column
         .groupBy("term", "documentId").count //group by and then count number of rows per group, returning a df with groupings and the counting
-        .withColumnRenamed("count", "termFrequency")
         .where($"term" =!= "") // seems like there are some tokens that are empty, even though Tokenizer should remove them
+        .withColumn("posting", struct($"documentId", $"count")) // merge columns as a single {docId, termFreq}
+        .select("term", "posting")
+        .groupBy("term").agg(collect_list($"posting") as "postingList") // we do another grouping in order to collect the postings into a list
+        .orderBy("term")
         .persist(StorageLevel.MEMORY_ONLY_SER)
 
     index.write.mode(SaveMode.Ignore) //ignore if already present
