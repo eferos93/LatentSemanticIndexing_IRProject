@@ -32,7 +32,7 @@ class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRo
   def computeSVD(numberOfSingularValues: Int): SingularValueDecomposition[IndexedRowMatrix, Matrix] =
     matrix.computeSVD(numberOfSingularValues, computeU = true)
 
-  def getVocabulary: Dataset[String] = invertedIndex.dictionary.select("term").distinct.orderBy("term").as[String]
+  def getVocabulary: Dataset[String] = invertedIndex.dictionary.select("term").as[String]
 }
 
 //here we define factory methods (apply)
@@ -51,15 +51,13 @@ object TermDocumentMatrix {
                                                          wordWeight: T): TermDocumentMatrix = {
     val numberOfDocuments = invertedIndex.numberOfDocuments
     val matrixEntries = invertedIndex.dictionary
-      .as[(String, Long, Long)].rdd // RDD[(term, docId, termFreq)]
-      .groupBy(_._1) // group by term: RDD[term, Iterable[(term, docId, termFreq)]]
-      .sortByKey() // sort by term, as ordering is lost with grouping
-      .zipWithIndex // add term index: RDD[((term, Iterable[(term, docId, termFreq)]), termIndex)]
+      .as[(String, Array[(Long, Long)])].rdd // RDD[(term, Array[(docId, termFreq)])]
+      .zipWithIndex // add term index: RDD[((term, Array[(docId, termFreq)]), termIndex)]
       .flatMap {
-        case ((_, docIdsAndFrequencies: Iterable[(String, Long, Long)]), termIndex: Long) =>
+        case ((_, docIdsAndFrequencies: Array[(Long, Long)]), termIndex: Long) =>
           val documentFrequency = docIdsAndFrequencies.toSeq.length
           docIdsAndFrequencies.map {
-            case (_, documentId: Long, termFrequency: Long) =>
+            case (documentId: Long, termFrequency: Long) =>
               val args = Map[String, Long](
                 "termFrequency" -> termFrequency,
                 "numberOfDocuments" -> numberOfDocuments,

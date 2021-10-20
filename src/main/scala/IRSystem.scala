@@ -20,7 +20,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
    */
   def mapQueryVector(queryVector: BlockMatrix): DenseVector =
     inverseSigma.multiply(U.transpose).multiply(queryVector) // here we end up with a column vector represented as a BlockMatrix
-      .toLocalMatrix.asML.colIter.toSeq.head.toDense // convert the BlockMatrix to a local Vector
+      .toLocalMatrix.asML.colIter.toSeq.head.toDense // convert the result BlockMatrix to a local Vector
 
 
   /**
