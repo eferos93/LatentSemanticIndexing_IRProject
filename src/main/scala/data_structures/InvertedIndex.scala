@@ -36,7 +36,7 @@ object InvertedIndex {
     val numberOfDocuments =
       index
         .select(explode($"postingList") as "posting")
-        .select($"posting".getField("documentId") as "documentId")
+        .select($"posting".getField("documentId"))
         .distinct.count
     new InvertedIndex(index, numberOfDocuments)
   }
