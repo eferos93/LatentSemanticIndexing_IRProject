@@ -4,8 +4,10 @@ package data_structures
 import sparkSession.implicits._
 
 import org.apache.spark.sql.functions.{collect_list, explode, struct}
-import org.apache.spark.sql.{DataFrame, Dataset, SaveMode}
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SaveMode}
 import org.apache.spark.storage.StorageLevel
+
 
 class InvertedIndex(val dictionary: DataFrame, val numberOfDocuments: Long)
 
@@ -31,6 +33,11 @@ object InvertedIndex {
 
   def apply(pathToIndex: String): InvertedIndex = {
     val index = sparkSession.read.option("header", "true").parquet(pathToIndex).persist(StorageLevel.MEMORY_ONLY_SER)
-    new InvertedIndex(index, index.select("documentId").distinct.count)
+    val numberOfDocuments =
+      index
+        .select(explode($"postingList") as "posting")
+        .select($"posting".getField("documentId") as "documentId")
+        .distinct.count
+    new InvertedIndex(index, numberOfDocuments)
   }
 }
