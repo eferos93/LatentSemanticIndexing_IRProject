@@ -4,8 +4,7 @@ package data_structures
 import sparkSession.implicits._
 
 import org.apache.spark.sql.functions.{collect_list, explode, struct}
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SaveMode}
+import org.apache.spark.sql.{DataFrame, Dataset, SaveMode}
 import org.apache.spark.storage.StorageLevel
 
 
