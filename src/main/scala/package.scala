@@ -76,10 +76,7 @@ package object project {
       .withColumnRenamed("result", "tokens")
   }
 
-  /**
-   * data downloadable from https://github.com/davidsbatista/text-classification/blob/master/movies_genres.csv.bz2
-   * function used also to read back the index
-   */
+  
   def readData(filepath: String,
                delimiter: String = "\t",
                columnsToSelect: Option[Seq[ColumnName]] = None,
@@ -119,10 +116,6 @@ package object project {
       .as[Movie].persist(StorageLevel.MEMORY_ONLY_SER) //convert it to Dataset[Movie]
   }
 
-  /**
-   * Data can be downloaded with the link below, but use the data in this repo, as there were some problems
-   * with the file rlv-ass http://ir.dcs.gla.ac.uk/resources/test_collections/npl/
-   */
   def readNplCorpus(path: String = "data/npl/doc-text"): Dataset[NplDocument] = {
     val df: DataFrame = sparkSession.read.option("lineSep", "   /\n").text(path) // Dataframe with one single column "value"
     val columnsSplit = split(df("value"), "\n") //split the column
