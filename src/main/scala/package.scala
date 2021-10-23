@@ -72,6 +72,7 @@ package object project {
 
     //transform the data
     pipeline.fit(filteredCorpus).transform(filteredCorpus)
+//      :+ appends the element to the Seq, :_* will convert the Seq[String] to String*
       .selectExpr(extraColumns :+ "stemNoStopWords.result": _*)
       .withColumnRenamed("result", "tokens")
   }
