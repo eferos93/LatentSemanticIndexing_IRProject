@@ -1,4 +1,4 @@
-# LatentSemanticIndexing_IRProject
+# Information Retrieval System with Latent Semantic Indexing and Spark
 Final project of the Information Retreival Course of the master degree in Data Science and Scientific computing.
 
 ## Project Requirements
