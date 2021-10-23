@@ -16,4 +16,4 @@ val sparkDependencies = Seq(
 libraryDependencies ++= sparkDependencies
 
 libraryDependencies += "com.github.fommil.netlib" % "all" % "1.1.2"
-libraryDependencies += "com.johnsnowlabs.nlp" %% "spark-nlp" % "3.3.0"
+libraryDependencies += "com.johnsnowlabs.nlp" %% "spark-nlp" % "3.3.1"
