@@ -12,6 +12,7 @@ import org.apache.spark.sql.Dataset
 
 import scala.math.log
 
+// trait is like interface in java
 trait WordWeight {
   def weight(args: Map[String, Long]): Double
 }
@@ -26,13 +27,16 @@ case class TermFrequencyWeighting() extends WordWeight {
     args("termFrequency").toDouble
 }
 
+
 class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRowMatrix) {
   def computeSVD(numberOfSingularValues: Int): SingularValueDecomposition[IndexedRowMatrix, Matrix] =
     matrix.computeSVD(numberOfSingularValues, computeU = true)
 
-  def getVocabulary: Dataset[String] = invertedIndex.dictionary.select("term").distinct.as[String]
+  def getVocabulary: Dataset[String] = invertedIndex.dictionary.select("term").as[String]
 }
 
+//here we define factory methods (apply)
+//it is possible to invoke them implicitly, e.g. TermDocumentMatrix(corpus, tfidf = true) will invoke the first apply below
 object TermDocumentMatrix {
   def apply[T <: Document](corpus: Dataset[T], tfidf: Boolean): TermDocumentMatrix = 
     computeTermDocumentMatrix(InvertedIndex(corpus), getWeigher(tfidf))
@@ -47,15 +51,13 @@ object TermDocumentMatrix {
                                                          wordWeight: T): TermDocumentMatrix = {
     val numberOfDocuments = invertedIndex.numberOfDocuments
     val matrixEntries = invertedIndex.dictionary
-      .as[(String, Long, Long)].rdd // (term, docId, termFrequency)
-      .groupBy(_._1) // group by term
-      .sortByKey() // sort by term, as ordering might be lost with grouping
-      .zipWithIndex // add term index
+      .as[(String, Array[(Long, Long)])].rdd // RDD[(term, Array[(docId, termFreq)])]
+      .zipWithIndex // add term index: RDD[((term, Array[(docId, termFreq)]), termIndex)]
       .flatMap {
-        case ((_, docIdsAndFrequencies), termIndex) =>
+        case ((_, docIdsAndFrequencies: Array[(Long, Long)]), termIndex: Long) =>
           val documentFrequency = docIdsAndFrequencies.toSeq.length
           docIdsAndFrequencies.map {
-            case (_, documentId, termFrequency) =>
+            case (documentId: Long, termFrequency: Long) =>
               val args = Map[String, Long](
                 "termFrequency" -> termFrequency,
                 "numberOfDocuments" -> numberOfDocuments,
@@ -64,11 +66,10 @@ object TermDocumentMatrix {
               MatrixEntry(
                 termIndex,
                 documentId,
-//                termFrequency * log(numberOfDocuments.toDouble / documentFrequency)
                 wordWeight.weight(args)
               )
           }
-      }
+      } // here we end up with a RDD[MatrixEntry]
     new TermDocumentMatrix(invertedIndex, new CoordinateMatrix(matrixEntries).toIndexedRowMatrix)
   }
 }
