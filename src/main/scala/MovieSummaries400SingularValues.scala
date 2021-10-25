@@ -33,6 +33,11 @@ object MovieSummaries400SingularValues extends App {
   val corpus: Dataset[Movie] = readMovieCorpus()
   println("Spark Web UI:")
   sparkContext.uiWebUrl.foreach(println(_))
-  queryIrSystem(buildIrSystem(100, corpus), 100)
-  queryIrSystem(buildIrSystem(400, corpus), 400)
+
+  var ir = buildIrSystem(100, corpus)
+  queryIrSystem(ir, 100)
+
+  ir = buildIrSystem(400, corpus)
+  ir.saveIrSystem()
+  queryIrSystem(ir, 400)
 }
