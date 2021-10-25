@@ -6,7 +6,7 @@ import org.apache.spark.sql.Dataset
 
 import java.nio.file.{Files, Paths}
 
-object MovieSummaries400SingularValues {
+object MovieSummaries400SingularValues extends App {
   val corpus: Dataset[Movie] = readMovieCorpus()
   println(sparkContext.uiWebUrl)
   val irSystem: IRSystem[Movie] =
