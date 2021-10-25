@@ -15,6 +15,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 
   /**
    * Map a queryVector to the lower dimensional space
+   *
    * @param queryVector vector representation of the query
    * @return vector representing the queryVector in a Lower dimensional space
    */
@@ -25,6 +26,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 
   /**
    * Given a text query, it cleans it and convert it to vector representation
+   *
    * @param textQuery text query
    * @return vector representation of the query
    */
@@ -48,8 +50,9 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
 
   /**
    * Given a text query, gets the query vector
+   *
    * @param textQuery plain text query
-   * @param top how many documents with the highest score we want to keep
+   * @param top       how many documents with the highest score we want to keep
    * @return Sequence of (document, score)
    */
   def answerQuery(textQuery: String, top: Int): Seq[(T, Double)] = {
@@ -88,6 +91,7 @@ object IRSystem {
     val termDocumentMatrix = TermDocumentMatrix(pathToIndex, tfidf)
     initializeIRSystem(corpus, termDocumentMatrix, numberOfSingularValues)
   }
+
   def apply[T <: Document](corpus: Dataset[T], pathToIndex: String, pathToMatrices: String): IRSystem[T] = {
     val U = readMatrix(s"$pathToMatrices/U/")
     val V = readV(s"$pathToMatrices/V/")
@@ -117,13 +121,17 @@ object IRSystem {
     val V = singularValueDecomposition.V.asML.rowIter.toSeq
       .zipWithIndex //zip with the documentIDs
       .toDS.persist(StorageLevel.MEMORY_ONLY_SER) // convert to DataSet[(Vector, Int)]
-    val inverseSigmaAsLocal = OldMatrices.diag(OldVectors.dense(singularValueDecomposition.s.toArray.map(1/_)))
+    val inverseSigmaAsLocal = OldMatrices.diag(OldVectors.dense(singularValueDecomposition.s.toArray.map(1 / _)))
     val rddMatrix = sparkContext.parallelize(inverseSigmaAsLocal.rowIter.zipWithIndex.toSeq).map {
       case (row, index) => IndexedRow(index, row)
     }
     val inverseSigmaAsBlock = new IndexedRowMatrix(rddMatrix, numberOfSingularValues, numberOfSingularValues).toBlockMatrix
-    new IRSystem(corpus,
+    new IRSystem(
+      corpus,
       termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
-      UasBlock, inverseSigmaAsBlock, V)
+      UasBlock.persist(StorageLevel.MEMORY_ONLY_SER),
+      inverseSigmaAsBlock.persist(StorageLevel.MEMORY_ONLY_SER),
+      V
+    )
   }
 }

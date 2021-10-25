@@ -8,6 +8,7 @@ import java.nio.file.{Files, Paths}
 
 object MovieSummaries400SingularValues extends App {
   val corpus: Dataset[Movie] = readMovieCorpus()
+  println("Spark Web UI:")
   println(sparkContext.uiWebUrl)
   val irSystem: IRSystem[Movie] =
     if (Files.exists(Paths.get("index"))) {
@@ -18,9 +19,13 @@ object MovieSummaries400SingularValues extends App {
       IRSystem(corpus, 400, tfidf = true)
     }
 
+  println("Query: \"murder detective action\"")
   irSystem.query("murder detective action")
+  println("\nQuery: \"detective kill police\"")
   irSystem.query("detective kill police")
+  println("\nQuery: \"party student university school\"")
   irSystem.query("party student university school")
+  println("\nQuery: \"ancient rome roman legions\"")
   irSystem.query("ancient rome roman legions")
 
 }

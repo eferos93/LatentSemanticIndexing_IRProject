@@ -44,7 +44,8 @@ object RankOptimisation extends App {
 
   val corpus: Dataset[NplDocument] = readNplCorpus()
   val queryAndRelevanceSets: Array[(String, Array[Long])] = readQueryAndRelevance()
-
+  println("Spark Web UI:")
+  println(sparkContext.uiWebUrl)
   println("TESTING WITH TF WEIGHT")
   val resTf = evaluation(corpus, queryAndRelevanceSets, tfidf = false)
   println("TESTING WITH TFIDF WEIGHT")
