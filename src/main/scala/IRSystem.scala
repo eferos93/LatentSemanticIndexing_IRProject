@@ -97,9 +97,12 @@ object IRSystem {
     val V = readV(s"$pathToMatrices/V/")
     val inverseSigma = readMatrix(s"$pathToMatrices/s/")
     val index = sparkSession.read.option("header", "true").parquet(pathToIndex)
-    new IRSystem(corpus,
+    new IRSystem(
+      corpus,
       index.select("term").distinct.as[String].persist(StorageLevel.MEMORY_ONLY_SER),
-      U, inverseSigma, V
+      U.persist(StorageLevel.MEMORY_ONLY_SER),
+      inverseSigma.persist(StorageLevel.MEMORY_ONLY_SER),
+      V.persist(StorageLevel.MEMORY_ONLY_SER)
     )
   }
 
