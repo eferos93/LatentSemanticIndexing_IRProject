@@ -6,7 +6,7 @@ import org.apache.spark.sql.Dataset
 
 import java.nio.file.{Files, Paths}
 
-object MovieSummaries400SingularValues extends App {
+object MovieSummariesTest extends App {
   def buildIrSystem(numberOfSingularValues: Int, corpus: Dataset[Movie]): IRSystem[Movie] = {
     println(s"\nBUILDING IR SYSTEM WITH $numberOfSingularValues singular values")
     if (Files.exists(Paths.get("index"))) {
