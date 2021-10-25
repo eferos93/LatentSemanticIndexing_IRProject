@@ -11,7 +11,8 @@ Write an IR system that uses latent semantic indexing to answer queries.
 | The system must be able to save the data structures used for querying. | :heavy_check_mark: |
 
 ## Data
-For this project we used two datasets: [CMU Movie Summary Corpus](http://www.cs.cmu.edu/~ark/personas/) and [NPL collection](http://ir.dcs.gla.ac.uk/resources/test_collections/npl/)
+For this project we used two datasets: [CMU Movie Summary Corpus](http://www.cs.cmu.edu/~ark/personas/) and [NPL collection](http://ir.dcs.gla.ac.uk/resources/test_collections/npl/).
+
 The second dataset is already in this repository, while the other must be downloaded from the link above (extract everythning inside the dicrectory data/)
 
 ## System Requirements
