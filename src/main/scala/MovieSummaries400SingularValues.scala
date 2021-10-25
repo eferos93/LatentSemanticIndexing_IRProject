@@ -8,6 +8,7 @@ import java.nio.file.{Files, Paths}
 
 object MovieSummaries400SingularValues extends App {
   def buildIrSystem(numberOfSingularValues: Int, corpus: Dataset[Movie]): IRSystem[Movie] = {
+    println(s"\nBUILDING IR SYSTEM WITH $numberOfSingularValues singular values")
     if (Files.exists(Paths.get("index"))) {
       println("index found")
       IRSystem(corpus, numberOfSingularValues, "index", tfidf = true)
@@ -18,7 +19,7 @@ object MovieSummaries400SingularValues extends App {
   }
 
   def queryIrSystem(irSystem: IRSystem[Movie], numberOfSingularValues: Int): Unit = {
-    println(s"QUERYING IR SYSTEM WITH $numberOfSingularValues SINGULAR VALUES")
+    println(s"\nQUERYING IR SYSTEM WITH $numberOfSingularValues SINGULAR VALUES")
     println("Query: \"murder detective action\"")
     irSystem.query("murder detective action")
     println("\nQuery: \"detective kill police\"")
