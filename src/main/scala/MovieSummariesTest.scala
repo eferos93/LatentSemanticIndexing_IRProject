@@ -10,7 +10,7 @@ object MovieSummariesTest extends App {
   irSystem.query("party student university school")
   irSystem.query("ancient rome roman legions")
 
-  irSystem = IRSystem(corpus, 200, "index", tfidf = true)
+  irSystem = IRSystem(corpus, 400, "index", tfidf = true)
   irSystem.query("murder detective action")
   irSystem.query("detective kill police")
   irSystem.query("party student university school")
