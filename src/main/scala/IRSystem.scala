@@ -41,6 +41,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
           OldVectors.dense(tokens.count(_.equals(word)).toDouble)
         )
     }
+    // we represent the queryVector as a BlockMatrix
     val columnVector = new IndexedRowMatrix(queryVector.persist(StorageLevel.MEMORY_ONLY_SER), vocabulary.count, 1)
     mapQueryVector(columnVector.toBlockMatrix)
   }
@@ -60,7 +61,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
     V.map { case (documentVector, documentId) => (documentId, computeCosineSimilarity(queryVector, documentVector)) }
       .orderBy($"_2".desc) //order by the second column (cosine sim. score) descending
       .take(top)
-      .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score) }
+      .map { case (documentId, score) => (corpus.where($"id" === documentId).first, score) } //Seq[(Document, Score)]
   }
 
   def query(query: String, top: Int = 5): Unit =
@@ -78,6 +79,7 @@ class IRSystem[T <: Document](val corpus: Dataset[T],
   }
 }
 
+// apply methods are factory methods
 object IRSystem {
   def apply[T <: Document](corpus: Dataset[T], numberOfSingularValues: Int, tfidf: Boolean): IRSystem[T] = {
     val termDocumentMatrix = TermDocumentMatrix(corpus, tfidf)
@@ -125,10 +127,10 @@ object IRSystem {
       .zipWithIndex //zip with the documentIDs
       .toDS.persist(StorageLevel.MEMORY_ONLY_SER) // convert to DataSet[(Vector, Int)]
     val inverseSigmaAsLocal = OldMatrices.diag(OldVectors.dense(singularValueDecomposition.s.toArray.map(1 / _)))
-    val rddMatrix = sparkContext.parallelize(inverseSigmaAsLocal.rowIter.zipWithIndex.toSeq).map {
+    val rddInverseSigma = sparkContext.parallelize(inverseSigmaAsLocal.rowIter.zipWithIndex.toSeq).map {
       case (row, index) => IndexedRow(index, row)
     }
-    val inverseSigmaAsBlock = new IndexedRowMatrix(rddMatrix, numberOfSingularValues, numberOfSingularValues).toBlockMatrix
+    val inverseSigmaAsBlock = new IndexedRowMatrix(rddInverseSigma, numberOfSingularValues, numberOfSingularValues).toBlockMatrix
     new IRSystem(
       corpus,
       termDocumentMatrix.getVocabulary.persist(StorageLevel.MEMORY_ONLY_SER),
