@@ -20,6 +20,7 @@ object Evaluator {
       queryRelevance
         .map {
           case (query, relevanceSet) =>
+//            answer the query and get the set of document ids returned
             (irSystem.answerQuery(query, relevanceSet.length).map(_._1.id).toArray, relevanceSet)
         }.toSeq
 
