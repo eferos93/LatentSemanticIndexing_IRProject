@@ -29,7 +29,13 @@ package object project {
 
   import sparkSession.implicits._
 
-
+  /**
+   * Function that applies cleaning steps to a Dataset
+   * @param dataSet dataset to clean
+   * @param columnToClean column name (column names are strings that strats with $)
+   * @param extraColumns to select in the dataset returned
+   * @return
+   */
   def pipelineClean(dataSet: Dataset[_],
                     columnToClean: ColumnName = $"description",
                     extraColumns: Seq[String] = Seq("id")
@@ -46,7 +52,7 @@ package object project {
     val filteredCorpus = dataSet.withColumn("normalisedDescription", normaliseText(columnToClean))
 
     // we define some transformers
-    // as the tokenizer, stmmer and stop words remover are from the spark.nlp library
+    // as the tokenizer, stemmer and stop words remover are from the spark.nlp library
     // we need to convert the document with the below DocumentAssembler
     val documentAssembler = new DocumentAssembler()
       .setInputCol("normalisedDescription")
@@ -89,7 +95,7 @@ package object project {
         .option("header", headerPresent).csv(filepath)
 
     columnsToSelect match {
-      case Some(columns) => data.select(columns: _*)
+      case Some(columns) => data.select(columns: _*) // : _* converts the Seq[String] in String*
       case None => data
     }
   }
