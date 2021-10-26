@@ -1,4 +1,4 @@
-# Information Retrieval System with Latent Semantic Indexing and Spark
+# Information Retrieval System using Latent Semantic Indexing and Apache Spark
 Final project of the Information Retreival Course of the master degree in Data Science and Scientific computing.
 
 ## Project Requirements
