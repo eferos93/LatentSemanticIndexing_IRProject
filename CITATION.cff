@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Fabrici
+    given-names: Eros
+title: "Information Retrieval System using Latent Semantic Indexing with Apache Spark"
+version: 0.1
+date-released: 2021-10-28
