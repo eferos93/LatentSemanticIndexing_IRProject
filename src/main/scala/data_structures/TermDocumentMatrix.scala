@@ -1,6 +1,7 @@
 package org.ir.project
 package data_structures
 
+import data_structures.weigher.{TermFrequencyWeighting, TfIdfWeighting, WordWeight}
 import sparkSession.implicits._
 
 import org.apache.spark.mllib.linalg.distributed.IndexedRowMatrix
@@ -10,22 +11,6 @@ import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, MatrixEntry}
 import org.apache.spark.mllib.linalg.{Matrix, SingularValueDecomposition}
 import org.apache.spark.sql.Dataset
 
-import scala.math.log
-
-// trait is like interface in java
-trait WordWeight {
-  def weight(args: Map[String, Long]): Double
-}
-
-case class TfIdfWeighting() extends WordWeight {
-  override def weight(args: Map[String, Long]): Double =
-    args("termFrequency") * log(args("numberOfDocuments").toDouble / args("documentFrequency"))
-}
-
-case class TermFrequencyWeighting() extends WordWeight {
-  override def weight(args: Map[String, Long]): Double =
-    args("termFrequency").toDouble
-}
 
 
 class TermDocumentMatrix(val invertedIndex: InvertedIndex, val matrix: IndexedRowMatrix) {
